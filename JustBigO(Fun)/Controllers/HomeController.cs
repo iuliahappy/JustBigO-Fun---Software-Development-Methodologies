@@ -18,6 +18,10 @@ namespace JustBigO_Fun_.Controllers
             return View();
         }
 
+        public IActionResult Solve()
+        {
+            return View();
+        }
         public IActionResult Privacy()
         {
             return View();

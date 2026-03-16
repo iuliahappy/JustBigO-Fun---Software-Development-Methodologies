@@ -1,4 +1,4 @@
-html {
+﻿﻿html {
     font-size: 14px;
     position: relative;
     min-height: 100%;
@@ -81,7 +81,7 @@ body {
 
 .jbo-main-shell {
     flex: 1;
-    /* Ad?ug?m spa?iu sus/jos ?i st�nga/dreapta pe ecrane mici */
+    /* Ad?ug?m spa?iu sus/jos ?i stânga/dreapta pe ecrane mici */
     padding: 2rem 1.5rem;
     display: flex;
     justify-content: center; /* Centreaz? containerul principal */
@@ -477,4 +477,122 @@ body {
     height: 7px;
     border-radius: 999px;
     background: #22c55e;
+}
+
+/* --- Workspace Layout (Solve Page) --- */
+.jbo-workspace {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    height: calc(100vh - 75px); /* Înălțimea ecranului minus header-ul */
+    width: 100%;
+    max-width: 1800px;
+    margin: 0 auto;
+}
+
+.jbo-workspace-panel {
+    background: rgba(15,23,42,0.96);
+    border: 1px solid rgba(148,163,184,0.3);
+    border-radius: 1rem;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Panoul din Stânga (Problema) */
+.jbo-problem-panel {
+    flex: 1; /* Ocupă jumătate din spațiu */
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.jbo-problem-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.jbo-problem-content {
+    margin-top: 1.5rem;
+    color: #cbd5e1;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.jbo-example-box {
+    background: rgba(255,255,255,0.05);
+    border-left: 3px solid #38bdf8;
+    padding: 1rem;
+    margin-block: 1rem;
+    border-radius: 0 0.5rem 0.5rem 0;
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+/* Panoul din Dreapta (Editor + Consolă) */
+.jbo-workspace-right {
+    flex: 1.2; /* Oferim puțin mai mult spațiu codului */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.jbo-editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(15,23,42,0.96);
+    border: 1px solid rgba(148,163,184,0.3);
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+}
+
+.jbo-language-select {
+    background: rgba(30,41,59,0.8);
+    color: #e5e7eb;
+    border: 1px solid rgba(148,163,184,0.4);
+    border-radius: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.jbo-monaco-container {
+    flex: 1; /* Editorul va umple spațiul disponibil */
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px solid rgba(148,163,184,0.3);
+}
+
+.jbo-console-panel {
+    height: 180px; /* Înălțime fixă pentru consolă */
+    background: rgba(15,23,42,0.96);
+    border: 1px solid rgba(148,163,184,0.3);
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.jbo-console-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid rgba(148,163,184,0.2);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #9ca3af;
+}
+
+.jbo-console-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.jbo-console-body {
+    padding: 1rem;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    overflow-y: auto;
+    flex: 1;
 }

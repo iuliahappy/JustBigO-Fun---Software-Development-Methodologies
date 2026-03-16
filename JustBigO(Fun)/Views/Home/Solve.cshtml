@@ -1,0 +1,132 @@
+﻿﻿@{
+    ViewData["Title"] = "Solve: Two Sum";
+}
+
+<div class="jbo-workspace">
+
+    <div class="jbo-workspace-panel jbo-problem-panel">
+        <div class="jbo-panel-header">
+            <h1 class="jbo-problem-title">1. Two Sum</h1>
+            <div class="jbo-chip-row">
+                <span class="jbo-chip jbo-chip--easy">Easy</span>
+                <span class="jbo-chip">Array</span>
+                <span class="jbo-chip">Hash Map</span>
+            </div>
+        </div>
+
+        <div class="jbo-problem-content">
+            <p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.</p>
+            <p>You may assume that each input would have <strong>exactly one solution</strong>, and you may not use the same element twice.</p>
+
+            <div class="jbo-example-box">
+                <strong>Input:</strong> nums = [2,7,11,15], target = 9<br />
+                <strong>Output:</strong> [0,1]<br />
+                <strong>Explanation:</strong> Because nums[0] + nums[1] == 9, we return [0, 1].
+            </div>
+        </div>
+
+        <div class="jbo-hint-section border-top pt-3 mt-4" style="border-color: rgba(148,163,184,0.2) !important;">
+            <button class="btn jbo-btn-ghost w-100 d-flex justify-content-center align-items-center gap-2" id="askHintBtn">
+                <span>💡 Cere un Indiciu (AI Mentor)</span>
+                <span class="badge bg-secondary">3 ramase</span>
+            </button>
+            <div id="hintContainer" class="mt-2 text-muted" style="font-size: 0.85rem; display: none;"></div>
+        </div>
+    </div>
+
+    <div class="jbo-workspace-right">
+
+        <div class="jbo-editor-toolbar">
+            <select class="jbo-language-select" id="languageSelect">
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+            </select>
+
+            <div class="jbo-complexity-badges">
+                <span class="jbo-badge-soft" id="timeComplexity" title="Timp estimat">⏱ O(?)</span>
+                <span class="jbo-badge-soft" id="spaceComplexity" title="Spațiu estimat">💾 O(?)</span>
+            </div>
+        </div>
+
+        <div id="monaco-editor-container" class="jbo-monaco-container"></div>
+
+        <div class="jbo-console-panel">
+            <div class="jbo-console-header">
+                <span>Console Output</span>
+                <div class="jbo-console-actions">
+                    <button class="btn jbo-btn-ghost btn-sm" id="btnRun">Run Code</button>
+                    <button class="btn jbo-btn-primary btn-sm" id="btnSubmit">Submit</button>
+                </div>
+            </div>
+            <div class="jbo-console-body" id="consoleOutput">
+                Ready. Select a language and write your code.
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+
+    <script>
+        // 2. Definim șabloanele de cod pentru fiecare limbaj
+        const codeTemplates = {
+            python: [
+                'def two_sum(nums, target):',
+                '    # Write your solution here',
+                '    pass'
+            ].join('\n'),
+
+            java: [
+                'class Solution {',
+                '    public int[] twoSum(int[] nums, int target) {',
+                '        // Write your solution here',
+                '        return new int[]{};',
+                '    }',
+                '}'
+            ].join('\n'),
+
+            cpp: [
+                '#include <vector>',
+                '',
+                'class Solution {',
+                'public:',
+                '    std::vector<int> twoSum(std::vector<int>& nums, int target) {',
+                '        // Write your solution here',
+                '        return {};',
+                '    }',
+                '};'
+            ].join('\n')
+        };
+
+        // 3. Configurăm și pornim Monaco Editor
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+
+        require(['vs/editor/editor.main'], function () {
+            // Creăm editorul direct în div-ul nostru
+            window.editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
+                value: codeTemplates['python'], // Preluăm codul Python
+                language: 'python',             // Setăm limbajul la Python
+                theme: 'vs-dark',               // Tema întunecată
+                automaticLayout: true,          // Se redimensionează automat
+                minimap: { enabled: false },    // Fără minimap
+                fontSize: 14,
+                fontFamily: '"JetBrains Mono", Consolas, monospace',
+                scrollBeyondLastLine: false,
+                roundedSelection: true
+            });
+
+            // 4. Când utilizatorul schimbă limbajul din meniu:
+            document.getElementById('languageSelect').addEventListener('change', function(e) {
+                var newLang = e.target.value;
+
+                if (codeTemplates[newLang]) {
+                    // Schimbăm textul și culorile
+                    window.editor.setValue(codeTemplates[newLang]);
+                    monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
+                }
+            });
+        });
+    </script>
+}
