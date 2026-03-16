@@ -1,0 +1,36 @@
+﻿# ==========================================
+# Visual Studio / ASP.NET GitIgnore Template
+# ==========================================
+
+# Foldere generate la compilare (foarte important să fie ignorate)
+[Bb]in/
+[Oo]bj/
+
+# Foldere ascunse specifice Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# Pachete NuGet
+*.nupkg
+packages/
+*.nuget.props
+*.nuget.targets
+
+# Fișiere de log și cache
+*.log
+[Ll]og/
+[Ll]ogs/
+
+# Mac OS 
+.DS_Store
+
+# Fișiere de publicare a site-ului
+*.Publish.xml
+*.pubxml
+*.pubxml.user
+
+# Setări locale pentru dezvoltare (opțional, dar recomandat)
+appsettings.Development.json

@@ -1,0 +1,175 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<section class="jbo-hero">
+    <div class="jbo-hero-left">
+        <div class="jbo-hero-kickers">
+            <span class="jbo-kicker-pill">
+                <span class="jbo-kicker-dot"></span>
+                Live Docker judging
+            </span>
+            <span class="jbo-kicker-pill">
+                Big O, not big hassle
+            </span>
+        </div>
+        <h1 class="jbo-hero-title">
+            Practice algorithms,<br />
+            <span>master Big&nbsp;O</span> with fun agents.
+        </h1>
+        <p class="jbo-hero-subtitle">
+            JustBigO(Fun) is where you write algorithms in a focused interface, run them in real Docker containers,
+            and get instant feedback from smart agents on complexity, transpilations, and hints.
+        </p>
+        <div class="jbo-hero-cta">
+            <a asp-area="" asp-controller="Home" asp-action="Index" asp-fragment="problemset" class="btn jbo-btn-primary">
+                Start solving problems
+            </a>
+            <a asp-area="Identity" asp-page="/Account/Login" class="btn jbo-btn-ghost">
+                View submission history
+            </a>
+        </div>
+        <div class="jbo-hero-meta">
+            <span><strong>Docker sandbox</strong> for every run</span>
+            <span><strong>3 AI agents</strong> – Transpiler, Analyzer, Mentor</span>
+            <span><strong>Time &amp; Space</strong> Big O badges on submit</span>
+        </div>
+
+    </div>
+    <div class="jbo-hero-right">
+        <div class="jbo-glass-panel">
+            <div class="jbo-glass-header">
+                <div>
+                    <div class="jbo-glass-title">Core playground</div>
+                    <div style="font-size: 0.8rem; color: #9ca3af;">Problem ▸ Editor ▸ Verdict</div>
+                </div>
+                <span class="jbo-language-pill">Python ▾</span>
+            </div>
+            <div class="jbo-split-shell">
+                <div class="jbo-panel">
+                    <div class="jbo-panel-header">
+                        <span>Problem • Two Sum</span>
+                        <span class="jbo-badge">Easy • Array</span>
+                    </div>
+                    <div class="jbo-problem-body">
+                        Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the
+                        two numbers such that they add up to <code>target</code>.<br /><br />
+                        • Single clear statement panel<br />
+                        • No chat, just problem &amp; data
+                    </div>
+                </div>
+                <div class="jbo-panel">
+                    <div class="jbo-panel-header">
+                        <span>Editor • main.py</span>
+                        <span class="jbo-badge">O(n) • O(n)</span>
+                    </div>
+                    <div class="jbo-code-preview">
+                        <pre>
+def two_sum(nums, target):
+    seen = {}
+    for i, x in enumerate(nums):
+        if target - x in seen:
+            return [seen[target - x], i]
+        seen[x] = i
+                        </pre>
+                    </div>
+                    <div class="jbo-status-chips">
+                        <span class="jbo-status-chip jbo-status-chip--accepted">Accepted</span>
+                        <span class="jbo-status-chip jbo-status-chip--tle">Time Limit Exceeded</span>
+                        <span class="jbo-status-chip jbo-status-chip--wa">Wrong Answer</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="jbo-grid-row" id="problemset">
+    <section class="jbo-section-card">
+        <header class="jbo-section-header">
+            <div>
+                <h2 class="jbo-section-title">Problemset &amp; progress</h2>
+                <p class="jbo-section-subtitle">
+                    Browse problems by difficulty and track the status of your submissions.
+                </p>
+            </div>
+            <div class="jbo-chip-row">
+                <span class="jbo-chip jbo-chip--easy">Easy</span>
+                <span class="jbo-chip jbo-chip--medium">Medium</span>
+                <span class="jbo-chip jbo-chip--hard">Hard</span>
+            </div>
+        </header>
+        <table class="jbo-mini-table">
+            <thead>
+                <tr>
+                    <th>Problem</th>
+                    <th>Tags</th>
+                    <th>Difficulty</th>
+                    <th>Best status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Two Sum</td>
+                    <td>Array, Hash Map</td>
+                    <td><span class="jbo-chip jbo-chip--easy">Easy</span></td>
+                    <td><span class="jbo-status-chip jbo-status-chip--accepted">Accepted</span></td>
+                </tr>
+                <tr>
+                    <td>Binary Tree Level Order</td>
+                    <td>Tree, BFS</td>
+                    <td><span class="jbo-chip jbo-chip--medium">Medium</span></td>
+                    <td><span class="jbo-status-chip jbo-status-chip--wa">Wrong Answer</span></td>
+                </tr>
+                <tr>
+                    <td>Minimum Window Substring</td>
+                    <td>Sliding Window, String</td>
+                    <td><span class="jbo-chip jbo-chip--hard">Hard</span></td>
+                    <td><span class="jbo-status-chip jbo-status-chip--tle">Time Limit</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="jbo-section-card" id="agents">
+        <header class="jbo-section-header">
+            <div>
+                <h2 class="jbo-section-title">AI agents overview</h2>
+                <p class="jbo-section-subtitle">
+                    Transpiler, Analyzer, and Mentor, ready to jump in only when you ask.
+                </p>
+            </div>
+        </header>
+        <div class="jbo-chip-row" style="margin-bottom: 0.75rem;">
+            <span class="jbo-chip jbo-chip--agent">Transpiler agent • change language</span>
+            <span class="jbo-chip jbo-chip--agent">Analyzer agent • Big O time/space</span>
+            <span class="jbo-chip jbo-chip--agent">Mentor agent • hints &amp; refactor</span>
+        </div>
+        <table class="jbo-mini-table">
+            <thead>
+                <tr>
+                    <th>Agent</th>
+                    <th>Role</th>
+                    <th>Trigger</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Transpiler</td>
+                    <td>Rewrites your current solution into another language while preserving logic and variable names.</td>
+                    <td>Triggered when you switch the language from the dropdown.</td>
+                </tr>
+                <tr>
+                    <td>Analyzer</td>
+                    <td>Estimates time and space complexity and detects the paradigm or approach you are using.</td>
+                    <td>Runs automatically on every successful Submit.</td>
+                </tr>
+                <tr>
+                    <td>Mentor</td>
+                    <td>Generates contextual hints, can finish your current implementation, and suggests refactor steps.</td>
+                    <td>Triggered from “Ask for a hint”, “Complete current code”, or “Improve solution”.</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+</div>
