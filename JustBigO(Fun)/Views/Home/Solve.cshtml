@@ -1,36 +1,33 @@
-﻿﻿@{
-    ViewData["Title"] = "Solve: Two Sum";
+@model JustBigO_Fun_.Models.Problem
+@{
+    ViewData["Title"] = "Solve: " + (Model?.Title ?? "Problem");
+    var codeTemplatesJson = System.Text.Json.JsonSerializer.Serialize(Model?.GetCodeTemplates() ?? new Dictionary<string, string>());
 }
 
 <div class="jbo-workspace">
 
     <div class="jbo-workspace-panel jbo-problem-panel">
         <div class="jbo-panel-header">
-            <h1 class="jbo-problem-title">1. Two Sum</h1>
+            <h1 class="jbo-problem-title">@(Model?.OrderIndex). @(Model?.Title)</h1>
             <div class="jbo-chip-row">
-                <span class="jbo-chip jbo-chip--easy">Easy</span>
-                <span class="jbo-chip">Array</span>
-                <span class="jbo-chip">Hash Map</span>
+                <span class="jbo-chip jbo-chip--@(Model?.GetDifficultyClass())">@(Model?.Difficulty)</span>
+                @foreach (var tag in Model?.GetTags() ?? Array.Empty<string>())
+                {
+                    <span class="jbo-chip">@tag</span>
+                }
             </div>
         </div>
 
         <div class="jbo-problem-content">
-            <p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.</p>
-            <p>You may assume that each input would have <strong>exactly one solution</strong>, and you may not use the same element twice.</p>
-
-            <div class="jbo-example-box">
-                <strong>Input:</strong> nums = [2,7,11,15], target = 9<br />
-                <strong>Output:</strong> [0,1]<br />
-                <strong>Explanation:</strong> Because nums[0] + nums[1] == 9, we return [0, 1].
-            </div>
+            @Html.Raw(Model?.Description)
         </div>
 
-        <div class="jbo-hint-section border-top pt-3 mt-4" style="border-color: rgba(148,163,184,0.2) !important;">
+        <div class="jbo-hint-section">
             <button class="btn jbo-btn-ghost w-100 d-flex justify-content-center align-items-center gap-2" id="askHintBtn">
                 <span>💡 Cere un Indiciu (AI Mentor)</span>
                 <span class="badge bg-secondary">3 ramase</span>
             </button>
-            <div id="hintContainer" class="mt-2 text-muted" style="font-size: 0.85rem; display: none;"></div>
+            <div id="hintContainer" class="jbo-hint-content"></div>
         </div>
     </div>
 
@@ -49,7 +46,7 @@
             </div>
         </div>
 
-        <div id="monaco-editor-container" class="jbo-monaco-container"></div>
+        <div id="monaco-editor-container" class="jbo-monaco-container" data-problem-id="@(Model?.Id)"></div>
 
         <div class="jbo-console-panel">
             <div class="jbo-console-header">
@@ -70,44 +67,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
 
     <script>
-        // 2. Definim șabloanele de cod pentru fiecare limbaj
-        const codeTemplates = {
-            python: [
-                'def two_sum(nums, target):',
-                '    # Write your solution here',
-                '    pass'
-            ].join('\n'),
-
-            java: [
-                'class Solution {',
-                '    public int[] twoSum(int[] nums, int target) {',
-                '        // Write your solution here',
-                '        return new int[]{};',
-                '    }',
-                '}'
-            ].join('\n'),
-
-            cpp: [
-                '#include <vector>',
-                '',
-                'class Solution {',
-                'public:',
-                '    std::vector<int> twoSum(std::vector<int>& nums, int target) {',
-                '        // Write your solution here',
-                '        return {};',
-                '    }',
-                '};'
-            ].join('\n')
-        };
+        const codeTemplates = @Html.Raw(codeTemplatesJson) || {};
 
         // 3. Configurăm și pornim Monaco Editor
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
 
         require(['vs/editor/editor.main'], function () {
-            // Creăm editorul direct în div-ul nostru
+            const defaultCode = '// Write your solution here';
+            const initialLang = 'python';
+            const initialCode = codeTemplates[initialLang] || codeTemplates['java'] || codeTemplates['cpp'] || Object.values(codeTemplates)[0] || defaultCode;
+
             window.editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
-                value: codeTemplates['python'], // Preluăm codul Python
-                language: 'python',             // Setăm limbajul la Python
+                value: initialCode,
+                language: initialLang,
                 theme: 'vs-dark',               // Tema întunecată
                 automaticLayout: true,          // Se redimensionează automat
                 minimap: { enabled: false },    // Fără minimap
@@ -117,15 +89,11 @@
                 roundedSelection: true
             });
 
-            // 4. Când utilizatorul schimbă limbajul din meniu:
             document.getElementById('languageSelect').addEventListener('change', function(e) {
-                var newLang = e.target.value;
-
-                if (codeTemplates[newLang]) {
-                    // Schimbăm textul și culorile
-                    window.editor.setValue(codeTemplates[newLang]);
-                    monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
-                }
+                const newLang = e.target.value;
+                const template = codeTemplates[newLang] || defaultCode;
+                window.editor.setValue(template);
+                monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
             });
         });
     </script>

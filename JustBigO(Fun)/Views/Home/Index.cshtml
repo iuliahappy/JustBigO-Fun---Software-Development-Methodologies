@@ -1,5 +1,7 @@
-﻿@{
+@model IEnumerable<JustBigO_Fun_.Models.ProblemListItem>
+@{
     ViewData["Title"] = "Dashboard";
+    string GetDifficultyClass(string d) => d?.ToLowerInvariant() switch { "medium" => "medium", "hard" => "hard", _ => "easy" };
 }
 
 <section class="jbo-hero">
@@ -22,7 +24,7 @@
             and get instant feedback from smart agents on complexity, transpilations, and hints.
         </p>
         <div class="jbo-hero-cta">
-            <a asp-area="" asp-controller="Home" asp-action="Solve" asp-fragment="problemset" class="btn jbo-btn-primary">
+            <a asp-area="" asp-controller="Home" asp-action="Index" asp-fragment="problemset" class="btn jbo-btn-primary">
                 Start solving problems
             </a>
             <a asp-area="Identity" asp-page="/Account/Login" class="btn jbo-btn-ghost">
@@ -109,24 +111,15 @@ def two_sum(nums, target):
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>Two Sum</td>
-                    <td>Array, Hash Map</td>
-                    <td><span class="jbo-chip jbo-chip--easy">Easy</span></td>
-                    <td><span class="jbo-status-chip jbo-status-chip--accepted">Accepted</span></td>
-                </tr>
-                <tr>
-                    <td>Binary Tree Level Order</td>
-                    <td>Tree, BFS</td>
-                    <td><span class="jbo-chip jbo-chip--medium">Medium</span></td>
-                    <td><span class="jbo-status-chip jbo-status-chip--wa">Wrong Answer</span></td>
-                </tr>
-                <tr>
-                    <td>Minimum Window Substring</td>
-                    <td>Sliding Window, String</td>
-                    <td><span class="jbo-chip jbo-chip--hard">Hard</span></td>
-                    <td><span class="jbo-status-chip jbo-status-chip--tle">Time Limit</span></td>
-                </tr>
+                @foreach (var p in Model ?? Enumerable.Empty<JustBigO_Fun_.Models.ProblemListItem>())
+                {
+                    <tr>
+                        <td><a asp-action="Solve" asp-route-id="@p.Id" class="jbo-problem-link">@p.Title</a></td>
+                        <td>@p.Tags</td>
+                        <td><span class="jbo-chip jbo-chip--@GetDifficultyClass(p.Difficulty)">@p.Difficulty</span></td>
+                        <td><span class="jbo-status-chip">—</span></td>
+                    </tr>
+                }
             </tbody>
         </table>
     </section>

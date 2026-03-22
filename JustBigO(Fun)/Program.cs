@@ -16,6 +16,14 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
+// Apply migrations and seed problems
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await db.Database.MigrateAsync();
+    await ProblemSeeder.SeedAsync(db);
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
