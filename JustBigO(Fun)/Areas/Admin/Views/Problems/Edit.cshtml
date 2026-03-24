@@ -1,0 +1,68 @@
+@model ProblemEditVm
+@{
+    ViewData["Title"] = "Edit: " + Model.Title;
+}
+
+<div class="container py-4">
+    <h1 class="text-white mb-4">Edit: @Model.Title</h1>
+
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="jbo-section-card p-4">
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="Title" class="form-label text-white">Title</label>
+                <input asp-for="Title" class="form-control bg-dark text-white border-secondary" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Slug" class="form-label text-white">Slug (URL)</label>
+                <input asp-for="Slug" class="form-control bg-dark text-white border-secondary" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Difficulty" class="form-label text-white">Difficulty</label>
+                <select asp-for="Difficulty" class="form-select bg-dark text-white border-secondary">
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="OrderIndex" class="form-label text-white">Order</label>
+                <input asp-for="OrderIndex" type="number" class="form-control bg-dark text-white border-secondary" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Tags" class="form-label text-white">Tags (comma-separated)</label>
+                <input asp-for="Tags" class="form-control bg-dark text-white border-secondary" />
+            </div>
+            <div class="col-12">
+                <label asp-for="Description" class="form-label text-white">Description (HTML)</label>
+                <textarea asp-for="Description" class="form-control bg-dark text-white border-secondary" rows="6"></textarea>
+            </div>
+            <div class="col-12">
+                <label asp-for="CodeTemplatesJson" class="form-label text-white">Code templates (JSON)</label>
+                <textarea asp-for="CodeTemplatesJson" class="form-control bg-dark text-white border-secondary font-monospace" rows="8" style="font-size: 0.85rem;"></textarea>
+            </div>
+
+            <div class="col-12 border-top border-secondary pt-4 mt-3">
+                <h5 class="text-white mb-3">Add new tests (.in / .out)</h5>
+                <p class="text-muted small mb-2">@Model.ExistingTestCount existing tests. To add more: select ALL new .in files and ALL new .out files (Ctrl+Click). Pairing: 1st .in ↔ 1st .out, 2nd ↔ 2nd, etc.</p>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-white">.in files</label>
+                        <input type="file" name="InFiles" multiple accept=".in" class="form-control bg-dark text-white border-secondary" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-white">.out files</label>
+                        <input type="file" name="OutFiles" multiple accept=".out" class="form-control bg-dark text-white border-secondary" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 d-flex gap-2 pt-3">
+                <button type="submit" class="btn jbo-btn-primary">Save</button>
+                <a asp-action="Index" class="btn jbo-btn-ghost">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>

@@ -24,8 +24,8 @@
 
         <div class="jbo-hint-section">
             <button class="btn jbo-btn-ghost w-100 d-flex justify-content-center align-items-center gap-2" id="askHintBtn">
-                <span>💡 Cere un Indiciu (AI Mentor)</span>
-                <span class="badge bg-secondary">3 ramase</span>
+                <span>💡 Ask for a Hint (AI Mentor)</span>
+                <span class="badge bg-secondary">3 left</span>
             </button>
             <div id="hintContainer" class="jbo-hint-content"></div>
         </div>
@@ -41,8 +41,8 @@
             </select>
 
             <div class="jbo-complexity-badges">
-                <span class="jbo-badge-soft" id="timeComplexity" title="Timp estimat">⏱ O(?)</span>
-                <span class="jbo-badge-soft" id="spaceComplexity" title="Spațiu estimat">💾 O(?)</span>
+                <span class="jbo-badge-soft" id="timeComplexity" title="Estimated time">⏱ O(?)</span>
+                <span class="jbo-badge-soft" id="spaceComplexity" title="Estimated space">💾 O(?)</span>
             </div>
         </div>
 
@@ -69,7 +69,7 @@
     <script>
         const codeTemplates = @Html.Raw(codeTemplatesJson) || {};
 
-        // 3. Configurăm și pornim Monaco Editor
+        // Monaco Editor init
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
 
         require(['vs/editor/editor.main'], function () {
@@ -80,9 +80,9 @@
             window.editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
                 value: initialCode,
                 language: initialLang,
-                theme: 'vs-dark',               // Tema întunecată
-                automaticLayout: true,          // Se redimensionează automat
-                minimap: { enabled: false },    // Fără minimap
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: false },
                 fontSize: 14,
                 fontFamily: '"JetBrains Mono", Consolas, monospace',
                 scrollBeyondLastLine: false,

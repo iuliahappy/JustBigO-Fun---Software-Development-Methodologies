@@ -1,0 +1,68 @@
+@model ProblemEditVm
+@{
+    ViewData["Title"] = "New problem";
+}
+
+<div class="container py-4">
+    <h1 class="text-white mb-4">New problem</h1>
+
+    <form asp-action="Create" method="post" enctype="multipart/form-data" class="jbo-section-card p-4">
+        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="Title" class="form-label text-white">Title</label>
+                <input asp-for="Title" class="form-control bg-dark text-white border-secondary" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Slug" class="form-label text-white">Slug (URL)</label>
+                <input asp-for="Slug" class="form-control bg-dark text-white border-secondary" placeholder="ex: two-sum" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Difficulty" class="form-label text-white">Difficulty</label>
+                <select asp-for="Difficulty" class="form-select bg-dark text-white border-secondary">
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="OrderIndex" class="form-label text-white">Order</label>
+                <input asp-for="OrderIndex" type="number" class="form-control bg-dark text-white border-secondary" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Tags" class="form-label text-white">Tags (comma-separated)</label>
+                <input asp-for="Tags" class="form-control bg-dark text-white border-secondary" placeholder="Array, Hash Map" />
+            </div>
+            <div class="col-12">
+                <label asp-for="Description" class="form-label text-white">Description (HTML)</label>
+                <textarea asp-for="Description" class="form-control bg-dark text-white border-secondary" rows="6" placeholder="<p>Problem statement...</p>"></textarea>
+            </div>
+            <div class="col-12">
+                <label class="form-label text-white">Code templates (JSON)</label>
+                <textarea asp-for="CodeTemplatesJson" class="form-control bg-dark text-white border-secondary font-monospace" rows="8" style="font-size: 0.85rem;"></textarea>
+                <small class="text-muted">Ex: {"python":"def solve():...","java":"class Solution{...}","cpp":"..."}</small>
+            </div>
+
+            <div class="col-12 border-top border-secondary pt-4 mt-3">
+                <h5 class="text-white mb-3">Test files (.in / .out) – hidden from users</h5>
+                <p class="text-muted small mb-2">File content is stored in the database (not the files themselves). For multiple tests: select ALL .in files in the first field and ALL .out files in the second (Ctrl+Click). Pairing: 1st .in ↔ 1st .out, 2nd ↔ 2nd, etc.</p>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-white">.in files</label>
+                        <input type="file" name="InFiles" multiple accept=".in" class="form-control bg-dark text-white border-secondary" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-white">.out files</label>
+                        <input type="file" name="OutFiles" multiple accept=".out" class="form-control bg-dark text-white border-secondary" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 d-flex gap-2 pt-3">
+                <button type="submit" class="btn jbo-btn-primary">Save</button>
+                <a asp-action="Index" class="btn jbo-btn-ghost">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>

@@ -2,24 +2,24 @@
 # Visual Studio / ASP.NET GitIgnore Template
 # ==========================================
 
-# Foldere generate la compilare (foarte important să fie ignorate)
+# Build output (important to ignore)
 [Bb]in/
 [Oo]bj/
 
-# Foldere ascunse specifice Visual Studio
+# Visual Studio hidden folders
 .vs/
 *.user
 *.userosscache
 *.sln.docstates
 *.suo
 
-# Pachete NuGet
+# NuGet packages
 *.nupkg
 packages/
 *.nuget.props
 *.nuget.targets
 
-# Fișiere de log și cache
+# Log and cache files
 *.log
 [Ll]og/
 [Ll]ogs/
@@ -27,10 +27,31 @@ packages/
 # Mac OS 
 .DS_Store
 
-# Fișiere de publicare a site-ului
+# Publish files
 *.Publish.xml
 *.pubxml
 *.pubxml.user
 
-# Setări locale pentru dezvoltare (opțional, dar recomandat)
+# Local development settings (optional but recommended)
 appsettings.Development.json
+
+# ==========================================
+# Extra Additions for Team Dev & ASP.NET Core
+# ==========================================
+
+# SQLite Databases (prevent overriding team data)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# Other IDEs settings (VS Code, JetBrains Rider)
+.vscode/
+.idea/
+
+# Front-End dependencies
+node_modules/
+
+# User uploaded files / Test files (Optional: uncomment and adjust path if you save files to disk)
+# /wwwroot/uploads/
+# /JustBigO_Fun_/SampleTestFiles/
