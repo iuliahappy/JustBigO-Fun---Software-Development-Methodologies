@@ -126,7 +126,7 @@ int main() {{
     return 0;
 }}";
             await File.WriteAllTextAsync(Path.Combine(workDir, "driver.cpp"), driver, Utf8NoBom);
-            compileCmd = "g++ -O3 /app/driver.cpp -o /app/out";
+            compileCmd = "g++ -O3 -I/usr/include /app/driver.cpp -o /app/out";
             runCmd = "/app/out";
         }
         else if (lang == "java")
