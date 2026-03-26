@@ -74,7 +74,6 @@ public class DockerCodeExecutor : ICodeExecutor
         var snakeMethod = submission.Problem.MethodName ?? "solve";
         var camelMethod = ToCamelCase(snakeMethod);
         
-        // 1. Prepare files
         await File.WriteAllTextAsync(Path.Combine(workDir, "input.json"), test.InputJson, Utf8NoBom);
 
         string runCmd = "";
@@ -90,9 +89,6 @@ import solution
 try:
     with open('/app/input.json', 'r') as f: data = json.load(f)
     func = getattr(solution, '{snakeMethod}', getattr(solution, '{camelMethod}', None))
-    if func is None:
-        print(f""Error: Method '{snakeMethod}' not found in solution.py"", file=sys.stderr)
-        sys.exit(1)
     res = func(**data) if isinstance(data, dict) else func(data)
     print(json.dumps(res))
 except Exception as e:
@@ -106,21 +102,27 @@ except Exception as e:
         else if (lang == "cpp")
         {
             await File.WriteAllTextAsync(Path.Combine(workDir, "solution.cpp"), submission.SourceCode, Utf8NoBom);
-            // Minimal C++ driver for Two Sum
             var driver = $@"
 #include <iostream>
 #include <vector>
 #include <string>
+#include <fstream>
+#include <nlohmann/json.hpp>
 #include ""solution.cpp""
+
+using json = nlohmann::json;
+
 int main() {{
     Solution sol;
-    // Hardcoded for Two Sum prototype
-    std::vector<int> nums = {{2, 7, 11, 15}}; 
-    int target = 9;
+    std::ifstream f(""/app/input.json"");
+    json data = json::parse(f);
+    
+    std::vector<int> nums = data[""nums""].get<std::vector<int>>();
+    int target = data[""target""].get<int>();
+    
     std::vector<int> res = sol.{camelMethod}(nums, target);
-    std::cout << ""["";
-    for(size_t i=0; i<res.size(); ++i) std::cout << res[i] << (i==res.size()-1 ? """" : "","");
-    std::cout << ""]"" << std::endl;
+    
+    std::cout << json(res).dump() << std::endl;
     return 0;
 }}";
             await File.WriteAllTextAsync(Path.Combine(workDir, "driver.cpp"), driver, Utf8NoBom);
@@ -132,11 +134,20 @@ int main() {{
             await File.WriteAllTextAsync(Path.Combine(workDir, "Solution.java"), submission.SourceCode, Utf8NoBom);
             var driver = $@"
 import java.util.*;
+import java.io.*;
+import java.nio.file.*;
+
 public class Driver {{
     public static void main(String[] args) throws Exception {{
+        String content = new String(Files.readAllBytes(Paths.get(""/app/input.json"")));
+        // Minimal manual parsing for prototype
+        String numsStr = content.substring(content.indexOf(""["") + 1, content.indexOf(""]""));
+        int target = Integer.parseInt(content.substring(content.lastIndexOf("":"") + 1).replace(""}}"", """").trim());
+        
+        int[] nums = Arrays.stream(numsStr.split("","")).map(String::trim).mapToInt(Integer::parseInt).toArray();
+        
         Solution sol = new Solution();
-        // Hardcoded for Two Sum prototype
-        int[] res = sol.{camelMethod}(new int[]{{2, 7, 11, 15}}, 9); 
+        int[] res = sol.{camelMethod}(nums, target);
         System.out.println(Arrays.toString(res).replace("" "", """"));
     }}
 }}";
@@ -159,7 +170,7 @@ public class Driver {{
 
         try {
             using var p = Process.Start(psi);
-            if (p == null) throw new Exception("Failed to start Docker.");
+            if (p == null) throw new Exception("Failed to start docker process.");
             var outTask = p.StandardOutput.ReadToEndAsync();
             var errTask = p.StandardError.ReadToEndAsync();
             if (await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(5)), p.WaitForExitAsync()) == Task.Delay(TimeSpan.FromSeconds(5))) {
@@ -182,10 +193,7 @@ public class Driver {{
         return result;
     }
 
-    private bool IsMatch(string actual, string expected) {
-        // Simple JSON-like comparison (ignore whitespace)
-        return actual.Replace(" ", "") == expected.Replace(" ", "");
-    }
+    private bool IsMatch(string actual, string expected) => actual.Replace(" ", "") == expected.Replace(" ", "");
 
     private string GetDockerImage(string language) => "justbigo-runner:latest";
 }
