@@ -3,6 +3,7 @@ using JustBigO_Fun_.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text;
 
 namespace JustBigO_Fun_.Services;
 
@@ -10,6 +11,7 @@ public class DockerCodeExecutor : ICodeExecutor
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<DockerCodeExecutor> _logger;
+    private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
 
     public DockerCodeExecutor(IServiceScopeFactory scopeFactory, ILogger<DockerCodeExecutor> logger)
     {
@@ -97,9 +99,9 @@ public class DockerCodeExecutor : ICodeExecutor
         var lang = submission.Language.ToLower();
         var methodName = submission.Problem.MethodName ?? "solve";
         
-        // 1. Prepare files
-        await File.WriteAllTextAsync(Path.Combine(workDir, GetFileName(lang)), submission.SourceCode);
-        await File.WriteAllTextAsync(Path.Combine(workDir, "input.json"), test.InputJson);
+        // 1. Prepare files - Use UTF-8 WITHOUT BOM for compatibility with Linux containers
+        await File.WriteAllTextAsync(Path.Combine(workDir, GetFileName(lang)), submission.SourceCode, Utf8NoBom);
+        await File.WriteAllTextAsync(Path.Combine(workDir, "input.json"), test.InputJson, Utf8NoBom);
 
         string runCmd = "";
         string compileCmd = "";
@@ -130,7 +132,7 @@ except Exception as e:
     traceback.print_exc(file=sys.stderr)
     sys.exit(1)
 ";
-            await File.WriteAllTextAsync(Path.Combine(workDir, "driver.py"), driver);
+            await File.WriteAllTextAsync(Path.Combine(workDir, "driver.py"), driver, Utf8NoBom);
             runCmd = "python /app/driver.py";
         }
         else if (lang == "java")
@@ -147,7 +149,7 @@ public class Driver {{
         System.exit(1);
     }}
 }}";
-            await File.WriteAllTextAsync(Path.Combine(workDir, "Driver.java"), driver);
+            await File.WriteAllTextAsync(Path.Combine(workDir, "Driver.java"), driver, Utf8NoBom);
             compileCmd = "javac /app/Solution.java /app/Driver.java";
             runCmd = "java -cp /app Driver";
         }
