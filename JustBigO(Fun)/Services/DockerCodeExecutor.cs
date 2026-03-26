@@ -188,3 +188,13 @@ public class Driver {{
         _ => "alpine"
     };
 }
+
+public class TestCaseResult
+{
+    public int TestId { get; set; }
+    public SubmissionStatus Status { get; set; }
+    public string? Input { get; set; }
+    public string? Expected { get; set; }
+    public string? Output { get; set; }
+    public string? Error { get; set; }
+}
