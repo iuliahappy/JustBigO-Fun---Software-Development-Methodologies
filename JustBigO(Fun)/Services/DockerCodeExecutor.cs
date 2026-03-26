@@ -90,12 +90,20 @@ public class DockerCodeExecutor : ICodeExecutor
         _ => "alpine"
     };
 
+    private string GetDockerPath(string path)
+    {
+        // On Windows, docker volumes need a specific format or it might fail depending on the setup.
+        // Usually "C:\path" works, but sometimes it needs to be normalized.
+        return path.Replace("\\", "/");
+    }
+
     private async Task<TestCaseResult> RunTestCaseAsync(Submission submission, ProblemTest test, string workDir, string fileName)
     {
         var result = new TestCaseResult { TestId = test.Id };
         var inputPath = Path.Combine(workDir, $"test_{test.Id}.in");
         await File.WriteAllTextAsync(inputPath, test.InputJson);
 
+        var dockerWorkDir = GetDockerPath(workDir);
         var stopwatch = Stopwatch.StartNew();
         
         // 1. Compile if necessary
@@ -111,7 +119,7 @@ public class DockerCodeExecutor : ICodeExecutor
             var compilePsi = new ProcessStartInfo
             {
                 FileName = "docker",
-                Arguments = $"run --rm -v \"{workDir}:/app\" {GetDockerImage(submission.Language)} sh -c \"{compileCmd}\"",
+                Arguments = $"run --rm -v \"{dockerWorkDir}:/app\" {GetDockerImage(submission.Language)} sh -c \"{compileCmd}\"",
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
@@ -143,7 +151,7 @@ public class DockerCodeExecutor : ICodeExecutor
         var psi = new ProcessStartInfo
         {
             FileName = "docker",
-            Arguments = $"run --rm --network none -v \"{workDir}:/app\" --memory 128m --cpus 0.5 {GetDockerImage(submission.Language)} sh -c \"{runCommand}\"",
+            Arguments = $"run --rm --network none -v \"{dockerWorkDir}:/app\" --memory 128m --cpus 0.5 {GetDockerImage(submission.Language)} sh -c \"{runCommand}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -153,7 +161,12 @@ public class DockerCodeExecutor : ICodeExecutor
         try
         {
             using var process = Process.Start(psi);
-            if (process == null) throw new Exception("Failed to start docker process.");
+            if (process == null) 
+            {
+                result.Status = SubmissionStatus.SystemError;
+                result.Error = "Failed to start docker process (Process.Start returned null).";
+                return result;
+            }
 
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
@@ -174,7 +187,8 @@ public class DockerCodeExecutor : ICodeExecutor
             if (process.ExitCode != 0)
             {
                 result.Status = SubmissionStatus.RuntimeError;
-                result.Error = error;
+                result.Error = string.IsNullOrWhiteSpace(error) ? $"Process exited with code {process.ExitCode}" : error;
+                _logger.LogWarning("Docker execution failed for submission {SubmissionId}. ExitCode: {ExitCode}, Error: {Error}", submission.Id, process.ExitCode, error);
                 return result;
             }
 
