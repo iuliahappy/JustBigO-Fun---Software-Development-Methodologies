@@ -33,33 +33,29 @@ public class DockerCodeExecutor : ICodeExecutor
         await db.SaveChangesAsync();
 
         var workDir = Path.Combine(Path.GetTempPath(), "justbigo", submission.Id.ToString());
+        if (Directory.Exists(workDir)) Directory.Delete(workDir, true);
         Directory.CreateDirectory(workDir);
 
         try
         {
-            var fileName = GetFileName(submission.Language);
-            var filePath = Path.Combine(workDir, fileName);
-            await File.WriteAllTextAsync(filePath, submission.SourceCode);
-
             var results = new List<TestCaseResult>();
             bool allPassed = true;
 
             foreach (var test in submission.Problem.Tests.OrderBy(t => t.OrderIndex))
             {
-                var testResult = await RunTestCaseAsync(submission, test, workDir, fileName);
+                var testResult = await RunTestCaseAsync(submission, test, workDir);
                 results.Add(testResult);
 
                 if (testResult.Status != SubmissionStatus.Accepted)
                 {
                     allPassed = false;
-                    // In some platforms, they stop at first failure. Let's do that for now.
                     break;
                 }
             }
 
             submission.ResultsJson = JsonSerializer.Serialize(results);
-            submission.Status = allPassed ? SubmissionStatus.Accepted : results.Last().Status;
-            submission.ExecutionTimeMs = results.Any() ? results.Max(r => r.TimeMs) : 0;
+            submission.Status = allPassed ? SubmissionStatus.Accepted : (results.Any() ? results.Last().Status : SubmissionStatus.SystemError);
+            submission.ExecutionTimeMs = results.Any(r => r.Status == SubmissionStatus.Accepted) ? results.Where(r => r.Status == SubmissionStatus.Accepted).Max(r => r.TimeMs) : 0;
         }
         catch (Exception ex)
         {
@@ -92,105 +88,111 @@ public class DockerCodeExecutor : ICodeExecutor
 
     private string GetDockerPath(string path)
     {
-        // On Windows, docker volumes need a specific format or it might fail depending on the setup.
-        // Usually "C:\path" works, but sometimes it needs to be normalized.
         return path.Replace("\\", "/");
     }
 
-    private async Task<TestCaseResult> RunTestCaseAsync(Submission submission, ProblemTest test, string workDir, string fileName)
+    private async Task<TestCaseResult> RunTestCaseAsync(Submission submission, ProblemTest test, string workDir)
     {
-        var result = new TestCaseResult { TestId = test.Id };
+        var result = new TestCaseResult { TestId = test.Id, Input = test.InputJson, Expected = test.ExpectedOutputJson.Trim() };
+        var lang = submission.Language.ToLower();
+        var methodName = submission.Problem.MethodName ?? "solve";
         
-        // Prepare code with driver if needed
-        string finalFileName = fileName;
-        if (submission.Language.ToLower() == "python")
+        // 1. Prepare files
+        await File.WriteAllTextAsync(Path.Combine(workDir, GetFileName(lang)), submission.SourceCode);
+        await File.WriteAllTextAsync(Path.Combine(workDir, "input.json"), test.InputJson);
+
+        string runCmd = "";
+        string compileCmd = "";
+
+        if (lang == "python")
         {
-            var methodName = submission.Problem.MethodName ?? "solve";
-            var driverCode = $@"
+            var driver = $@"
 import json
 import sys
+import solution
 
-# User Solution
-{submission.SourceCode}
-
-if __name__ == ""__main__"":
+if __name__ == '__main__':
     try:
-        line = sys.stdin.read()
-        if not line:
-            sys.exit(0)
-        data = json.loads(line)
+        with open('/app/input.json', 'r') as f:
+            data = json.load(f)
         
-        # Call the method with arguments from JSON
+        func = getattr(solution, '{methodName}')
         if isinstance(data, dict):
-            res = {methodName}(**data)
+            res = func(**data)
         else:
-            res = {methodName}(data)
-            
+            res = func(data)
         print(json.dumps(res))
     except Exception as e:
-        print(e, file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 ";
-            finalFileName = "driver.py";
-            await File.WriteAllTextAsync(Path.Combine(workDir, finalFileName), driverCode);
+            await File.WriteAllTextAsync(Path.Combine(workDir, "driver.py"), driver);
+            runCmd = "python /app/driver.py";
         }
-        else
+        else if (lang == "java")
         {
-            await File.WriteAllTextAsync(Path.Combine(workDir, fileName), submission.SourceCode);
-        }
+            // Simple driver for Java - assumes Solution class exists
+            // This is a minimal implementation for the prototype
+            var driver = $@"
+import java.util.*;
+import java.io.*;
 
-        var inputPath = Path.Combine(workDir, $"test_{test.Id}.in");
-        await File.WriteAllTextAsync(inputPath, test.InputJson);
+public class Driver {{
+    public static void main(String[] args) throws Exception {{
+        // For prototype, we'll just handle the specific Two Sum structure if needed, 
+        // but ideally we'd use a JSON library. 
+        // For now, let's just try to call it with dummy data or simple parsing if it's Two Sum.
+        Solution sol = new Solution();
+        // TODO: Implement robust JSON parsing for Java driver
+        // For now, this is a placeholder that will fail with a clear message
+        System.err.println(""Java driver JSON parsing not fully implemented yet"");
+        System.exit(1);
+    }}
+}}";
+            await File.WriteAllTextAsync(Path.Combine(workDir, "Driver.java"), driver);
+            compileCmd = "javac /app/Solution.java /app/Driver.java";
+            runCmd = "java -cp /app Driver";
+        }
+        else if (lang == "cpp")
+        {
+            compileCmd = "g++ -O3 /app/solution.cpp -o /app/solution";
+            runCmd = "/app/solution < /app/input.json"; // C++ still uses redirect for now
+        }
 
         var dockerWorkDir = GetDockerPath(workDir);
-        var stopwatch = Stopwatch.StartNew();
-        
-        // 1. Compile if necessary
-        if (submission.Language.ToLower() is "java" or "cpp")
-        {
-            var compileCmd = submission.Language.ToLower() switch
-            {
-                "java" => "javac /app/Solution.java",
-                "cpp" => "g++ -O3 /app/solution.cpp -o /app/solution",
-                _ => ""
-            };
 
+        // 2. Compile
+        if (!string.IsNullOrEmpty(compileCmd))
+        {
             var compilePsi = new ProcessStartInfo
             {
                 FileName = "docker",
-                Arguments = $"run --rm -v \"{dockerWorkDir}:/app\" {GetDockerImage(submission.Language)} sh -c \"{compileCmd}\"",
+                Arguments = $"run --rm -v \"{dockerWorkDir}:/app\" {GetDockerImage(lang)} sh -c \"{compileCmd}\"",
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-
-            using var compileProcess = Process.Start(compilePsi);
-            if (compileProcess != null)
+            using var p = Process.Start(compilePsi);
+            if (p != null)
             {
-                var error = await compileProcess.StandardError.ReadToEndAsync();
-                await compileProcess.WaitForExitAsync();
-                if (compileProcess.ExitCode != 0)
+                var err = await p.StandardError.ReadToEndAsync();
+                await p.WaitForExitAsync();
+                if (p.ExitCode != 0)
                 {
                     result.Status = SubmissionStatus.CompilationError;
-                    result.Error = error;
+                    result.Error = err;
                     return result;
                 }
             }
         }
 
-        // 2. Run
-        string runCommand = submission.Language.ToLower() switch
-        {
-            "python" => $"python /app/{finalFileName} < /app/test_{test.Id}.in",
-            "java" => $"java -cp /app Solution < /app/test_{test.Id}.in",
-            "cpp" => $"/app/solution < /app/test_{test.Id}.in",
-            _ => "cat"
-        };
-
-        var psi = new ProcessStartInfo
+        // 3. Run
+        var stopwatch = Stopwatch.StartNew();
+        var runPsi = new ProcessStartInfo
         {
             FileName = "docker",
-            Arguments = $"run --rm --network none -v \"{dockerWorkDir}:/app\" --memory 128m --cpus 0.5 {GetDockerImage(submission.Language)} sh -c \"{runCommand}\"",
+            Arguments = $"run --rm --network none -v \"{dockerWorkDir}:/app\" --memory 128m --cpus 0.5 {GetDockerImage(lang)} sh -c \"{runCmd}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -199,20 +201,15 @@ if __name__ == ""__main__"":
 
         try
         {
-            using var process = Process.Start(psi);
-            if (process == null) 
-            {
-                result.Status = SubmissionStatus.SystemError;
-                result.Error = "Failed to start docker process (Process.Start returned null).";
-                return result;
-            }
+            using var p = Process.Start(runPsi);
+            if (p == null) throw new Exception("Failed to start docker.");
 
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask = process.StandardError.ReadToEndAsync();
+            var outTask = p.StandardOutput.ReadToEndAsync();
+            var errTask = p.StandardError.ReadToEndAsync();
 
-            if (await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(5)), process.WaitForExitAsync()) == Task.Delay(TimeSpan.FromSeconds(5)))
+            if (await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(5)), p.WaitForExitAsync()) == Task.Delay(TimeSpan.FromSeconds(5)))
             {
-                process.Kill(true);
+                p.Kill(true);
                 result.Status = SubmissionStatus.TimeLimitExceeded;
                 return result;
             }
@@ -220,29 +217,24 @@ if __name__ == ""__main__"":
             stopwatch.Stop();
             result.TimeMs = stopwatch.Elapsed.TotalMilliseconds;
 
-            var output = (await outputTask).Trim();
-            var error = await errorTask;
+            var stdout = (await outTask).Trim();
+            var stderr = await errTask;
 
-            if (process.ExitCode != 0)
+            if (p.ExitCode != 0)
             {
                 result.Status = SubmissionStatus.RuntimeError;
-                result.Error = string.IsNullOrWhiteSpace(error) ? $"Process exited with code {process.ExitCode}" : error;
-                _logger.LogWarning("Docker execution failed for submission {SubmissionId}. ExitCode: {ExitCode}, Error: {Error}", submission.Id, process.ExitCode, error);
+                result.Error = string.IsNullOrWhiteSpace(stderr) ? $"Exit Code {p.ExitCode}. Output: {stdout}" : stderr;
                 return result;
             }
 
-            // Compare output
-            var expected = test.ExpectedOutputJson.Trim();
-            if (output == expected)
+            if (stdout == result.Expected)
             {
                 result.Status = SubmissionStatus.Accepted;
             }
             else
             {
                 result.Status = SubmissionStatus.WrongAnswer;
-                result.Input = test.InputJson;
-                result.Expected = expected;
-                result.Output = output;
+                result.Output = stdout;
             }
         }
         catch (Exception ex)
