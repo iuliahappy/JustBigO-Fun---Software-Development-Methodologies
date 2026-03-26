@@ -95,6 +95,73 @@
                 window.editor.setValue(template);
                 monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
             });
+
+            document.getElementById('btnSubmit').addEventListener('click', async function() {
+                const sourceCode = window.editor.getValue();
+                const language = document.getElementById('languageSelect').value;
+                const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
+                const consoleOutput = document.getElementById('consoleOutput');
+                
+                consoleOutput.innerHTML = "Submitting...";
+                
+                try {
+                    const response = await fetch('/api/submission', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
+                    });
+                    
+                    if (!response.ok) throw new Error(await response.text());
+                    
+                    const data = await response.json();
+                    pollStatus(data.submissionId);
+                } catch (err) {
+                    consoleOutput.innerHTML = "Error: " + err.message;
+                }
+            });
+
+            async function pollStatus(id) {
+                const consoleOutput = document.getElementById('consoleOutput');
+                const interval = setInterval(async () => {
+                    try {
+                        const response = await fetch('/api/submission/' + id);
+                        const data = await response.json();
+                        
+                        consoleOutput.innerHTML = "Status: " + data.status + "...";
+                        
+                        if (data.status !== 'Pending' && data.status !== 'Running' && data.status !== 'Compiling') {
+                            clearInterval(interval);
+                            displayResult(data);
+                        }
+                    } catch (err) {
+                        clearInterval(interval);
+                        consoleOutput.innerHTML = "Error polling: " + err.message;
+                    }
+                }, 2000);
+            }
+
+            function displayResult(data) {
+                const consoleOutput = document.getElementById('consoleOutput');
+                let html = `<div class="p-2">
+                    <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">${data.status}</h4>
+                    <div>Execution Time: ${data.executionTimeMs?.toFixed(2) || 0} ms</div>`;
+                
+                if (data.results) {
+                    const results = JSON.parse(data.results);
+                    html += `<div class="mt-2"><strong>Tests:</strong> ${results.filter(r => r.status === 'Accepted').length} / ${results.length} passed</div>`;
+                    
+                    const lastResult = results[results.length - 1];
+                    if (lastResult.status !== 'Accepted') {
+                        if (lastResult.output) html += `<div class="mt-2 text-warning">Output:<br/><pre>${lastResult.output}</pre></div>`;
+                        if (lastResult.error) html += `<div class="mt-2 text-danger">Error:<br/><pre>${lastResult.error}</pre></div>`;
+                    }
+                } else if (data.errorMessage) {
+                    html += `<div class="mt-2 text-danger">${data.errorMessage}</div>`;
+                }
+                
+                html += `</div>`;
+                consoleOutput.innerHTML = html;
+            }
         });
     </script>
 }

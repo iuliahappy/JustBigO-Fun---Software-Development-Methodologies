@@ -13,10 +13,21 @@ namespace JustBigO_Fun_.Data
 
         public DbSet<Problem> Problems => Set<Problem>();
         public DbSet<ProblemTest> ProblemTests => Set<ProblemTest>();
+        public DbSet<Submission> Submissions => Set<Submission>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<Submission>(e =>
+            {
+                e.Property(s => s.SourceCode).HasColumnType("nvarchar(max)");
+                e.Property(s => s.ResultsJson).HasColumnType("nvarchar(max)");
+                e.HasOne(s => s.Problem)
+                    .WithMany()
+                    .HasForeignKey(s => s.ProblemId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
 
             builder.Entity<Problem>(e =>
             {
