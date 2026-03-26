@@ -144,7 +144,8 @@
                 const consoleOutput = document.getElementById('consoleOutput');
                 let html = `<div class="p-2">
                     <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">${data.status}</h4>
-                    <div>Execution Time: ${data.executionTimeMs?.toFixed(2) || 0} ms</div>`;
+                    <div>Execution Time: ${data.executionTimeMs?.toFixed(2) || 0} ms</div>
+                    <div class="text-muted small">Method: ${data.problemMethodName || 'Not Set'}</div>`;
                 
                 if (data.results) {
                     const results = JSON.parse(data.results);

@@ -60,6 +60,7 @@ public class SubmissionController : ControllerBase
     public async Task<IActionResult> GetStatus(int id)
     {
         var submission = await _db.Submissions
+            .Include(s => s.Problem)
             .FirstOrDefaultAsync(s => s.Id == id);
 
         if (submission == null)
@@ -73,7 +74,8 @@ public class SubmissionController : ControllerBase
             status = submission.Status.ToString(),
             results = submission.ResultsJson,
             executionTimeMs = submission.ExecutionTimeMs,
-            errorMessage = submission.ErrorMessage
+            errorMessage = submission.ErrorMessage,
+            problemMethodName = submission.Problem?.MethodName
         });
     }
 }
