@@ -45,6 +45,7 @@ public static class ProblemSeeder
             Difficulty = "Easy",
             Tags = "Array,Hash Map",
             OrderIndex = 1,
+            MethodName = "two_sum",
             Description = """
                 <p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.</p>
                 <p>You may assume that each input would have <strong>exactly one solution</strong>, and you may not use the same element twice.</p>
@@ -97,6 +98,7 @@ public static class ProblemSeeder
             Difficulty = "Medium",
             Tags = "Tree,BFS",
             OrderIndex = 2,
+            MethodName = "level_order",
             Description = """
                 <p>Given the <code>root</code> of a binary tree, return the level order traversal of its nodes' values.</p>
                 <p>Return the result as a list of lists, where each inner list contains the values of nodes at that level, from left to right.</p>
@@ -143,6 +145,7 @@ public static class ProblemSeeder
             Difficulty = "Hard",
             Tags = "Sliding Window,String",
             OrderIndex = 3,
+            MethodName = "min_window",
             Description = """
                 <p>Given two strings <code>s</code> and <code>t</code>, return the minimum window substring of <code>s</code> such that every character in <code>t</code> (including duplicates) is included in the window.</p>
                 <p>If there is no such substring, return the empty string <code>""</code>.</p>

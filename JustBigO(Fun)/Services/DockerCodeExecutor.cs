@@ -100,6 +100,45 @@ public class DockerCodeExecutor : ICodeExecutor
     private async Task<TestCaseResult> RunTestCaseAsync(Submission submission, ProblemTest test, string workDir, string fileName)
     {
         var result = new TestCaseResult { TestId = test.Id };
+        
+        // Prepare code with driver if needed
+        string finalFileName = fileName;
+        if (submission.Language.ToLower() == "python")
+        {
+            var methodName = submission.Problem.MethodName ?? "solve";
+            var driverCode = $@"
+import json
+import sys
+
+# User Solution
+{submission.SourceCode}
+
+if __name__ == ""__main__"":
+    try:
+        line = sys.stdin.read()
+        if not line:
+            sys.exit(0)
+        data = json.loads(line)
+        
+        # Call the method with arguments from JSON
+        if isinstance(data, dict):
+            res = {methodName}(**data)
+        else:
+            res = {methodName}(data)
+            
+        print(json.dumps(res))
+    except Exception as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
+";
+            finalFileName = "driver.py";
+            await File.WriteAllTextAsync(Path.Combine(workDir, finalFileName), driverCode);
+        }
+        else
+        {
+            await File.WriteAllTextAsync(Path.Combine(workDir, fileName), submission.SourceCode);
+        }
+
         var inputPath = Path.Combine(workDir, $"test_{test.Id}.in");
         await File.WriteAllTextAsync(inputPath, test.InputJson);
 
@@ -142,7 +181,7 @@ public class DockerCodeExecutor : ICodeExecutor
         // 2. Run
         string runCommand = submission.Language.ToLower() switch
         {
-            "python" => $"python /app/{fileName} < /app/test_{test.Id}.in",
+            "python" => $"python /app/{finalFileName} < /app/test_{test.Id}.in",
             "java" => $"java -cp /app Solution < /app/test_{test.Id}.in",
             "cpp" => $"/app/solution < /app/test_{test.Id}.in",
             _ => "cat"

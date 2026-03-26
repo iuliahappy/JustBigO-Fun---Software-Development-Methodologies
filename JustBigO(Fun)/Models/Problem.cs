@@ -30,6 +30,10 @@ public class Problem
     /// <summary>JSON: { "python": "...", "java": "...", "cpp": "..." }</summary>
     public string CodeTemplatesJson { get; set; } = "{}";
 
+    /// <summary>The name of the function/method to call (e.g. "two_sum").</summary>
+    [MaxLength(100)]
+    public string? MethodName { get; set; }
+
     public int OrderIndex { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
