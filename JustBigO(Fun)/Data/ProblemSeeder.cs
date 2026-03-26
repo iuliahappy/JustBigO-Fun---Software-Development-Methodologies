@@ -7,8 +7,21 @@ public static class ProblemSeeder
 {
     public static async Task SeedAsync(ApplicationDbContext db)
     {
+        // If problems exist, we still want to ensure MethodNames are set for this feature
         if (await db.Problems.AnyAsync())
+        {
+            var p1 = await db.Problems.FirstOrDefaultAsync(p => p.Slug == "two-sum");
+            if (p1 != null && string.IsNullOrEmpty(p1.MethodName)) { p1.MethodName = "two_sum"; }
+            
+            var p2 = await db.Problems.FirstOrDefaultAsync(p => p.Slug == "binary-tree-level-order");
+            if (p2 != null && string.IsNullOrEmpty(p2.MethodName)) { p2.MethodName = "level_order"; }
+            
+            var p3 = await db.Problems.FirstOrDefaultAsync(p => p.Slug == "minimum-window-substring");
+            if (p3 != null && string.IsNullOrEmpty(p3.MethodName)) { p3.MethodName = "min_window"; }
+            
+            await db.SaveChangesAsync();
             return;
+        }
 
         var twoSumTemplates = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
         {
