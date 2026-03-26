@@ -187,12 +187,7 @@ public class Driver {{
         return actual.Replace(" ", "") == expected.Replace(" ", "");
     }
 
-    private string GetDockerImage(string language) => language.ToLower() switch {
-        "python" => "python:3.10-slim",
-        "java" => "eclipse-temurin:21-jdk-jammy",
-        "cpp" => "gcc:12",
-        _ => "alpine"
-    };
+    private string GetDockerImage(string language) => "justbigo-runner:latest";
 }
 
 public class TestCaseResult
