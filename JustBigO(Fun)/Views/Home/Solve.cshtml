@@ -152,8 +152,16 @@
                     
                     const lastResult = results[results.length - 1];
                     if (lastResult.status !== 'Accepted') {
-                        if (lastResult.output) html += `<div class="mt-2 text-warning">Output:<br/><pre>${lastResult.output}</pre></div>`;
-                        if (lastResult.error) html += `<div class="mt-2 text-danger">Error:<br/><pre>${lastResult.error}</pre></div>`;
+                        if (lastResult.status === 'WrongAnswer') {
+                            html += `<div class="mt-3 p-2 border border-danger rounded">
+                                <div class="mb-2"><strong>Test Case:</strong><pre class="bg-dark text-light p-2 mb-0 mt-1">${lastResult.input || 'N/A'}</pre></div>
+                                <div class="mb-2 text-danger"><strong>Your Output:</strong><pre class="bg-dark text-danger p-2 mb-0 mt-1">${lastResult.output || 'N/A'}</pre></div>
+                                <div class="mb-0 text-success"><strong>Expected Output:</strong><pre class="bg-dark text-success p-2 mb-0 mt-1">${lastResult.expected || 'N/A'}</pre></div>
+                            </div>`;
+                        } else {
+                            if (lastResult.output) html += `<div class="mt-2 text-warning">Output:<br/><pre>${lastResult.output}</pre></div>`;
+                            if (lastResult.error) html += `<div class="mt-2 text-danger">Error:<br/><pre>${lastResult.error}</pre></div>`;
+                        }
                     }
                 } else if (data.errorMessage) {
                     html += `<div class="mt-2 text-danger">${data.errorMessage}</div>`;

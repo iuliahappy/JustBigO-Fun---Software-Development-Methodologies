@@ -187,6 +187,8 @@ public class DockerCodeExecutor : ICodeExecutor
             else
             {
                 result.Status = SubmissionStatus.WrongAnswer;
+                result.Input = test.InputJson;
+                result.Expected = expected;
                 result.Output = output;
             }
         }
@@ -205,6 +207,8 @@ public class TestCaseResult
     public int TestId { get; set; }
     public SubmissionStatus Status { get; set; }
     public double TimeMs { get; set; }
+    public string? Input { get; set; }
+    public string? Expected { get; set; }
     public string? Output { get; set; }
     public string? Error { get; set; }
 }
