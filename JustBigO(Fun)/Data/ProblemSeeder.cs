@@ -7,8 +7,21 @@ public static class ProblemSeeder
 {
     public static async Task SeedAsync(ApplicationDbContext db)
     {
+        // If problems exist, we still want to ensure MethodNames are set for this feature
         if (await db.Problems.AnyAsync())
+        {
+            var p1 = await db.Problems.FirstOrDefaultAsync(p => p.Slug == "two-sum");
+            if (p1 != null && string.IsNullOrEmpty(p1.MethodName)) { p1.MethodName = "two_sum"; }
+            
+            var p2 = await db.Problems.FirstOrDefaultAsync(p => p.Slug == "binary-tree-level-order");
+            if (p2 != null && string.IsNullOrEmpty(p2.MethodName)) { p2.MethodName = "level_order"; }
+            
+            var p3 = await db.Problems.FirstOrDefaultAsync(p => p.Slug == "minimum-window-substring");
+            if (p3 != null && string.IsNullOrEmpty(p3.MethodName)) { p3.MethodName = "min_window"; }
+            
+            await db.SaveChangesAsync();
             return;
+        }
 
         var twoSumTemplates = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
         {
@@ -45,6 +58,7 @@ public static class ProblemSeeder
             Difficulty = "Easy",
             Tags = "Array,Hash Map",
             OrderIndex = 1,
+            MethodName = "two_sum",
             Description = """
                 <p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.</p>
                 <p>You may assume that each input would have <strong>exactly one solution</strong>, and you may not use the same element twice.</p>
@@ -97,6 +111,7 @@ public static class ProblemSeeder
             Difficulty = "Medium",
             Tags = "Tree,BFS",
             OrderIndex = 2,
+            MethodName = "level_order",
             Description = """
                 <p>Given the <code>root</code> of a binary tree, return the level order traversal of its nodes' values.</p>
                 <p>Return the result as a list of lists, where each inner list contains the values of nodes at that level, from left to right.</p>
@@ -143,6 +158,7 @@ public static class ProblemSeeder
             Difficulty = "Hard",
             Tags = "Sliding Window,String",
             OrderIndex = 3,
+            MethodName = "min_window",
             Description = """
                 <p>Given two strings <code>s</code> and <code>t</code>, return the minimum window substring of <code>s</code> such that every character in <code>t</code> (including duplicates) is included in the window.</p>
                 <p>If there is no such substring, return the empty string <code>""</code>.</p>

@@ -95,6 +95,93 @@
                 window.editor.setValue(template);
                 monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
             });
+
+            document.getElementById('btnSubmit').addEventListener('click', async function() {
+                const sourceCode = window.editor.getValue();
+                const language = document.getElementById('languageSelect').value;
+                const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
+                const consoleOutput = document.getElementById('consoleOutput');
+                
+                consoleOutput.innerHTML = "Submitting...";
+                
+                try {
+                    const response = await fetch('/api/submission', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
+                    });
+                    
+                    if (!response.ok) throw new Error(await response.text());
+                    
+                    const data = await response.json();
+                    pollStatus(data.submissionId);
+                } catch (err) {
+                    consoleOutput.innerHTML = "Error: " + err.message;
+                }
+            });
+
+            async function pollStatus(id) {
+                const consoleOutput = document.getElementById('consoleOutput');
+                const interval = setInterval(async () => {
+                    try {
+                        const response = await fetch('/api/submission/' + id);
+                        const data = await response.json();
+                        
+                        consoleOutput.innerHTML = "Status: " + data.status + "...";
+                        
+                        if (data.status !== 'Pending' && data.status !== 'Running' && data.status !== 'Compiling') {
+                            clearInterval(interval);
+                            displayResult(data);
+                        }
+                    } catch (err) {
+                        clearInterval(interval);
+                        consoleOutput.innerHTML = "Error polling: " + err.message;
+                    }
+                }, 2000);
+            }
+
+            function displayResult(data) {
+                const consoleOutput = document.getElementById('consoleOutput');
+                let html = `<div class="p-2">
+                    <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">Submission: ${data.status}</h4>
+                    <hr class="my-2 border-secondary"/>`;
+                
+                if (data.results) {
+                    const results = JSON.parse(data.results);
+                    results.forEach((r, idx) => {
+                        const isOk = r.status === 'Accepted';
+                        html += `
+                        <div class="mb-4 p-2 border ${isOk ? 'border-success' : 'border-danger'} rounded bg-dark">
+                            <div class="d-flex justify-content-between">
+                                <strong>Test Case #${idx + 1}</strong>
+                                <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Input:</small>
+                                <pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Expected:</small>
+                                <pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Actual Output (stdout):</small>
+                                <pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre>
+                            </div>
+                            ${r.error ? `
+                            <div class="mt-2">
+                                <small class="text-muted">Error (stderr):</small>
+                                <pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre>
+                            </div>` : ''}
+                        </div>`;
+                    });
+                } else if (data.errorMessage) {
+                    html += `<div class="alert alert-danger">${data.errorMessage}</div>`;
+                }
+                
+                html += `</div>`;
+                consoleOutput.innerHTML = html;
+            }
         });
     </script>
 }
