@@ -143,29 +143,40 @@
             function displayResult(data) {
                 const consoleOutput = document.getElementById('consoleOutput');
                 let html = `<div class="p-2">
-                    <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">${data.status}</h4>
-                    <div>Execution Time: ${data.executionTimeMs?.toFixed(2) || 0} ms</div>
-                    <div class="text-muted small">Method: ${data.problemMethodName || 'Not Set'}</div>`;
+                    <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">Submission: ${data.status}</h4>
+                    <hr class="my-2 border-secondary"/>`;
                 
                 if (data.results) {
                     const results = JSON.parse(data.results);
-                    html += `<div class="mt-2"><strong>Tests:</strong> ${results.filter(r => r.status === 'Accepted').length} / ${results.length} passed</div>`;
-                    
-                    const lastResult = results[results.length - 1];
-                    if (lastResult.status !== 'Accepted') {
-                        if (lastResult.status === 'WrongAnswer') {
-                            html += `<div class="mt-3 p-2 border border-danger rounded">
-                                <div class="mb-2"><strong>Test Case:</strong><pre class="bg-dark text-light p-2 mb-0 mt-1">${lastResult.input || 'N/A'}</pre></div>
-                                <div class="mb-2 text-danger"><strong>Your Output:</strong><pre class="bg-dark text-danger p-2 mb-0 mt-1">${lastResult.output || 'N/A'}</pre></div>
-                                <div class="mb-0 text-success"><strong>Expected Output:</strong><pre class="bg-dark text-success p-2 mb-0 mt-1">${lastResult.expected || 'N/A'}</pre></div>
-                            </div>`;
-                        } else {
-                            if (lastResult.output) html += `<div class="mt-2 text-warning">Output:<br/><pre>${lastResult.output}</pre></div>`;
-                            if (lastResult.error) html += `<div class="mt-2 text-danger">Error:<br/><pre>${lastResult.error}</pre></div>`;
-                        }
-                    }
+                    results.forEach((r, idx) => {
+                        const isOk = r.status === 'Accepted';
+                        html += `
+                        <div class="mb-4 p-2 border ${isOk ? 'border-success' : 'border-danger'} rounded bg-dark">
+                            <div class="d-flex justify-content-between">
+                                <strong>Test Case #${idx + 1}</strong>
+                                <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Input:</small>
+                                <pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Expected:</small>
+                                <pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Actual Output (stdout):</small>
+                                <pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre>
+                            </div>
+                            ${r.error ? `
+                            <div class="mt-2">
+                                <small class="text-muted">Error (stderr):</small>
+                                <pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre>
+                            </div>` : ''}
+                        </div>`;
+                    });
                 } else if (data.errorMessage) {
-                    html += `<div class="mt-2 text-danger">${data.errorMessage}</div>`;
+                    html += `<div class="alert alert-danger">${data.errorMessage}</div>`;
                 }
                 
                 html += `</div>`;
