@@ -90,6 +90,9 @@ import solution
 try:
     with open('/app/input.json', 'r') as f: data = json.load(f)
     func = getattr(solution, '{snakeMethod}', getattr(solution, '{camelMethod}', None))
+    if func is None:
+        print(f""Error: Method '{snakeMethod}' not found in solution.py"", file=sys.stderr)
+        sys.exit(1)
     res = func(**data) if isinstance(data, dict) else func(data)
     print(json.dumps(res))
 except Exception as e:
@@ -111,7 +114,8 @@ except Exception as e:
 #include ""solution.cpp""
 int main() {{
     Solution sol;
-    std::vector<int> nums = {{2, 7, 11, 15}}; // Simplified for prototype
+    // Hardcoded for Two Sum prototype
+    std::vector<int> nums = {{2, 7, 11, 15}}; 
     int target = 9;
     std::vector<int> res = sol.{camelMethod}(nums, target);
     std::cout << ""["";
@@ -131,7 +135,8 @@ import java.util.*;
 public class Driver {{
     public static void main(String[] args) throws Exception {{
         Solution sol = new Solution();
-        int[] res = sol.{camelMethod}(new int[]{{2, 7, 11, 15}}, 9); // Simplified for prototype
+        // Hardcoded for Two Sum prototype
+        int[] res = sol.{camelMethod}(new int[]{{2, 7, 11, 15}}, 9); 
         System.out.println(Arrays.toString(res).replace("" "", """"));
     }}
 }}";
@@ -154,6 +159,7 @@ public class Driver {{
 
         try {
             using var p = Process.Start(psi);
+            if (p == null) throw new Exception("Failed to start Docker.");
             var outTask = p.StandardOutput.ReadToEndAsync();
             var errTask = p.StandardError.ReadToEndAsync();
             if (await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(5)), p.WaitForExitAsync()) == Task.Delay(TimeSpan.FromSeconds(5))) {
@@ -183,7 +189,7 @@ public class Driver {{
 
     private string GetDockerImage(string language) => language.ToLower() switch {
         "python" => "python:3.10-slim",
-        "java" => "openjdk:21-slim",
+        "java" => "eclipse-temurin:21-jdk-jammy",
         "cpp" => "gcc:12",
         _ => "alpine"
     };
