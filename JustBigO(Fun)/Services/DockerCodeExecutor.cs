@@ -109,43 +109,40 @@ public class DockerCodeExecutor : ICodeExecutor
             var driver = $@"
 import json
 import sys
-import solution
+import os
 
-if __name__ == '__main__':
-    try:
-        with open('/app/input.json', 'r') as f:
-            data = json.load(f)
-        
-        func = getattr(solution, '{methodName}')
-        if isinstance(data, dict):
-            res = func(**data)
-        else:
-            res = func(data)
-        print(json.dumps(res))
-    except Exception as e:
-        import traceback
-        traceback.print_exc(file=sys.stderr)
-        sys.exit(1)
+# Add /app to path to find solution.py
+sys.path.append('/app')
+
+try:
+    import solution
+    with open('/app/input.json', 'r') as f:
+        data = json.load(f)
+    
+    func = getattr(solution, '{methodName}')
+    if isinstance(data, dict):
+        res = func(**data)
+    else:
+        res = func(data)
+    print(json.dumps(res))
+except Exception as e:
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    sys.exit(1)
 ";
             await File.WriteAllTextAsync(Path.Combine(workDir, "driver.py"), driver);
             runCmd = "python /app/driver.py";
         }
         else if (lang == "java")
         {
-            // Simple driver for Java - assumes Solution class exists
-            // This is a minimal implementation for the prototype
             var driver = $@"
 import java.util.*;
 import java.io.*;
 
 public class Driver {{
     public static void main(String[] args) throws Exception {{
-        // For prototype, we'll just handle the specific Two Sum structure if needed, 
-        // but ideally we'd use a JSON library. 
-        // For now, let's just try to call it with dummy data or simple parsing if it's Two Sum.
+        // Basic placeholder for Java
         Solution sol = new Solution();
-        // TODO: Implement robust JSON parsing for Java driver
-        // For now, this is a placeholder that will fail with a clear message
         System.err.println(""Java driver JSON parsing not fully implemented yet"");
         System.exit(1);
     }}
@@ -156,8 +153,8 @@ public class Driver {{
         }
         else if (lang == "cpp")
         {
-            compileCmd = "g++ -O3 /app/solution.cpp -o /app/solution";
-            runCmd = "/app/solution < /app/input.json"; // C++ still uses redirect for now
+            compileCmd = "g++ -O3 /app/solution.cpp -o /app/solution_bin";
+            runCmd = "/app/solution_bin < /app/input.json";
         }
 
         var dockerWorkDir = GetDockerPath(workDir);
@@ -168,7 +165,7 @@ public class Driver {{
             var compilePsi = new ProcessStartInfo
             {
                 FileName = "docker",
-                Arguments = $"run --rm -v \"{dockerWorkDir}:/app\" {GetDockerImage(lang)} sh -c \"{compileCmd}\"",
+                Arguments = $"run --rm -v \"{dockerWorkDir}:/app\" {GetDockerImage(lang)} sh -c \"cd /app && {compileCmd}\"",
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
@@ -192,7 +189,7 @@ public class Driver {{
         var runPsi = new ProcessStartInfo
         {
             FileName = "docker",
-            Arguments = $"run --rm --network none -v \"{dockerWorkDir}:/app\" --memory 128m --cpus 0.5 {GetDockerImage(lang)} sh -c \"{runCmd}\"",
+            Arguments = $"run --rm --network none -v \"{dockerWorkDir}:/app\" --memory 128m --cpus 0.5 {GetDockerImage(lang)} sh -c \"cd /app && {runCmd}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
