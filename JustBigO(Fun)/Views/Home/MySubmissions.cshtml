@@ -83,3 +83,60 @@ else
     </div>
 }
 </div>
+
+<div class="modal fade" id="codeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="modalTitle">Source Code</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="codeSnippet" class="p-3 bg-black border border-secondary rounded text-info" style="max-height: 500px; overflow-y: auto;"></pre>
+                <div id="errorSection" class="mt-3 d-none">
+                    <h6 class="text-danger">Error Details:</h6>
+                    <pre id="errorMessage" class="p-2 bg-dark border border-danger rounded text-danger small"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        async function viewCode(id) {
+            const codeSnippet = document.getElementById('codeSnippet');
+            const modalTitle = document.getElementById('modalTitle');
+            const errorSection = document.getElementById('errorSection');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            codeSnippet.innerText = "Loading code...";
+            errorSection.classList.add('d-none');
+            
+            // Afișăm modalul imediat
+            const myModal = new bootstrap.Modal(document.getElementById('codeModal'));
+            myModal.show();
+
+            try {
+                // Folosim API-ul de submission existent pe care l-ai creat
+                const response = await fetch('/api/submission/' + id);
+                if (!response.ok) throw new Error("Could not fetch code.");
+                
+                const data = await response.json();
+                
+                modalTitle.innerText = "Source Code - Submission #" + id + " (" + data.status + ")";
+                
+                // Setăm codul sursă (ar trebui să adaugi SourceCode în return-ul de la GetStatus din Controller dacă lipsește)
+                // Dacă în API-ul tău GetStatus nu returnează SourceCode, va trebui să îl adăugăm acolo
+                codeSnippet.innerText = data.sourceCode || "Code not available in API response.";
+                
+                if (data.errorMessage) {
+                    errorSection.classList.remove('d-none');
+                    errorMessage.innerText = data.errorMessage;
+                }
+            } catch (err) {
+                codeSnippet.innerText = "Error: " + err.message;
+            }
+        }
+    </script>
+}

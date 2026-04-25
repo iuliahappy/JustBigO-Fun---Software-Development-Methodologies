@@ -60,17 +60,14 @@ public class SubmissionController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    [Authorize] // Opțional: să nu lăsăm pe oricine să vadă statusul oricărei submisiuni
+    [Authorize]
     public async Task<IActionResult> GetStatus(int id)
     {
         var submission = await _db.Submissions
             .Include(s => s.Problem)
             .FirstOrDefaultAsync(s => s.Id == id);
 
-        if (submission == null)
-        {
-            return NotFound();
-        }
+        if (submission == null) return NotFound();
 
         return Ok(new
         {
@@ -79,6 +76,7 @@ public class SubmissionController : ControllerBase
             results = submission.ResultsJson,
             executionTimeMs = submission.ExecutionTimeMs,
             errorMessage = submission.ErrorMessage,
+            sourceCode = submission.SourceCode,
             problemMethodName = submission.Problem?.MethodName
         });
     }
