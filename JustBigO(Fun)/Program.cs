@@ -13,9 +13,24 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddScoped<ICodeExecutor, DockerCodeExecutor>();
 
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
-    .AddRoles<IdentityRole>()
+// --- MODIFICARE START: Configurare Identity cu Roluri și opțiuni de securitate ---
+builder.Services.AddDefaultIdentity<IdentityUser>(options =>
+{
+    options.SignIn.RequireConfirmedAccount = true;
+    // Poți adăuga configurări suplimentare aici (parole, lockout etc.)
+    options.Password.RequireDigit = true;
+    options.Password.RequiredLength = 8;
+})
+    .AddRoles<IdentityRole>() // Asigură suportul pentru RoleManager și [Authorize(Roles = "...")]
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+// Configurare explicită a politicilor (opțional, dar recomandat pentru claritate)
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("Admin"));
+});
+// --- MODIFICARE FINAL ---
+
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
@@ -26,7 +41,11 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+    // Aplică automat migrările la pornire
     await db.Database.MigrateAsync();
+
+    // Rulează seeder-ele existente
     await ProblemSeeder.SeedAsync(db);
     await AdminSeeder.SeedAsync(roleManager, userManager);
 }
@@ -39,13 +58,14 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 app.UseRouting();
 
+// --- NOTĂ: Ordinea contează aici! Authentication trebuie să fie înaintea Authorization ---
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();

@@ -1,6 +1,7 @@
 using JustBigO_Fun_.Data;
 using JustBigO_Fun_.Models;
 using JustBigO_Fun_.Services;
+using Microsoft.AspNetCore.Authorization; // Adăugat pentru [Authorize]
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -21,6 +22,7 @@ public class SubmissionController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize] // Doar utilizatorii autentificați pot face submit!
     public async Task<IActionResult> Submit([FromBody] SubmissionRequest request)
     {
         if (request == null || string.IsNullOrWhiteSpace(request.SourceCode))
@@ -44,19 +46,21 @@ public class SubmissionController : ControllerBase
             Language = request.Language,
             Status = SubmissionStatus.Pending,
             CreatedAt = DateTime.UtcNow,
-            UserId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) // Va prelua automat ID-ul curent
         };
 
         _db.Submissions.Add(submission);
         await _db.SaveChangesAsync();
 
-        // Start Docker execution here in a fire-and-forget way for this prototype.
+        // Start Docker execution here in a fire-and-forget way
+        // Executorul va căuta submisia în baza de date după ID și o va actualiza
         _ = Task.Run(() => _executor.ExecuteAsync(submission.Id));
-        
+
         return Ok(new { submissionId = submission.Id, status = submission.Status.ToString() });
     }
 
     [HttpGet("{id}")]
+    [Authorize] // Opțional: să nu lăsăm pe oricine să vadă statusul oricărei submisiuni
     public async Task<IActionResult> GetStatus(int id)
     {
         var submission = await _db.Submissions

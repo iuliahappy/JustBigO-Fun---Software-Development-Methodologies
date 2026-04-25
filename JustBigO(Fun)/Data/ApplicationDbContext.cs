@@ -21,12 +21,24 @@ namespace JustBigO_Fun_.Data
 
             builder.Entity<Submission>(e =>
             {
+                // Păstrăm configurările tale existente pentru coloane mari
                 e.Property(s => s.SourceCode).HasColumnType("nvarchar(max)");
                 e.Property(s => s.ResultsJson).HasColumnType("nvarchar(max)");
+
+                // Conversie automată pentru Enum (opțional, EF Core îl face int implicit)
+                e.Property(s => s.Status)
+                 .HasConversion<string>(); // Stochează "Accepted" în loc de 3 în DB pentru lizibilitate
+
                 e.HasOne(s => s.Problem)
                     .WithMany()
                     .HasForeignKey(s => s.ProblemId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                // Legătura cu tabela de utilizatori Identity
+                e.HasOne(s => s.User)
+                    .WithMany()
+                    .HasForeignKey(s => s.UserId)
+                    .OnDelete(DeleteBehavior.SetNull); // Dacă se șterge un user, păstrăm submisiile ca anonime
             });
 
             builder.Entity<Problem>(e =>

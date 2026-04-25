@@ -52,6 +52,9 @@
             <div class="jbo-console-header">
                 <span>Console Output</span>
                 <div class="jbo-console-actions">
+                    <a asp-controller="Home" asp-action="MySubmissions" asp-route-problemId="@Model?.Id" class="btn jbo-btn-ghost btn-sm text-decoration-none" target="_blank" title="View my submission history for this problem">
+                        <i class="bi bi-clock-history"></i> My History
+                    </a>
                     <button class="btn jbo-btn-ghost btn-sm" id="btnRun">Run Code</button>
                     <button class="btn jbo-btn-primary btn-sm" id="btnSubmit">Submit</button>
                 </div>
@@ -71,117 +74,116 @@
 
         // Monaco Editor init
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
-
         require(['vs/editor/editor.main'], function () {
-            const defaultCode = '// Write your solution here';
-            const initialLang = 'python';
-            const initialCode = codeTemplates[initialLang] || codeTemplates['java'] || codeTemplates['cpp'] || Object.values(codeTemplates)[0] || defaultCode;
+        const defaultCode = '// Write your solution here';
+        const initialLang = 'python';
+        const initialCode = codeTemplates[initialLang] || codeTemplates['java'] || codeTemplates['cpp'] || Object.values(codeTemplates)[0] || defaultCode;
 
-            window.editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
-                value: initialCode,
-                language: initialLang,
-                theme: 'vs-dark',
-                automaticLayout: true,
-                minimap: { enabled: false },
-                fontSize: 14,
-                fontFamily: '"JetBrains Mono", Consolas, monospace',
-                scrollBeyondLastLine: false,
-                roundedSelection: true
-            });
+        window.editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
+        value: initialCode,
+        language: initialLang,
+        theme: 'vs-dark',
+        automaticLayout: true,
+        minimap: { enabled: false },
+        fontSize: 14,
+        fontFamily: '"JetBrains Mono", Consolas, monospace',
+        scrollBeyondLastLine: false,
+        roundedSelection: true
+        });
 
-            document.getElementById('languageSelect').addEventListener('change', function(e) {
-                const newLang = e.target.value;
-                const template = codeTemplates[newLang] || defaultCode;
-                window.editor.setValue(template);
-                monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
-            });
+        document.getElementById('languageSelect').addEventListener('change', function(e) {
+        const newLang = e.target.value;
+        const template = codeTemplates[newLang] || defaultCode;
+        window.editor.setValue(template);
+        monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
+        });
 
-            document.getElementById('btnSubmit').addEventListener('click', async function() {
-                const sourceCode = window.editor.getValue();
-                const language = document.getElementById('languageSelect').value;
-                const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
-                const consoleOutput = document.getElementById('consoleOutput');
+        document.getElementById('btnSubmit').addEventListener('click', async function() {
+        const sourceCode = window.editor.getValue();
+        const language = document.getElementById('languageSelect').value;
+        const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
+        const consoleOutput = document.getElementById('consoleOutput');
                 
-                consoleOutput.innerHTML = "Submitting...";
+        consoleOutput.innerHTML = "Submitting...";
                 
-                try {
-                    const response = await fetch('/api/submission', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
-                    });
+        try {
+        const response = await fetch('/api/submission', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
+        });
                     
-                    if (!response.ok) throw new Error(await response.text());
+        if (!response.ok) throw new Error(await response.text());
                     
-                    const data = await response.json();
-                    pollStatus(data.submissionId);
-                } catch (err) {
-                    consoleOutput.innerHTML = "Error: " + err.message;
-                }
-            });
+        const data = await response.json();
+        pollStatus(data.submissionId);
+        } catch (err) {
+        consoleOutput.innerHTML = "Error: " + err.message;
+        }
+        });
 
-            async function pollStatus(id) {
-                const consoleOutput = document.getElementById('consoleOutput');
-                const interval = setInterval(async () => {
-                    try {
-                        const response = await fetch('/api/submission/' + id);
-                        const data = await response.json();
+        async function pollStatus(id) {
+        const consoleOutput = document.getElementById('consoleOutput');
+        const interval = setInterval(async () => {
+        try {
+        const response = await fetch('/api/submission/' + id);
+        const data = await response.json();
                         
-                        consoleOutput.innerHTML = "Status: " + data.status + "...";
+        consoleOutput.innerHTML = "Status: " + data.status + "...";
                         
-                        if (data.status !== 'Pending' && data.status !== 'Running' && data.status !== 'Compiling') {
-                            clearInterval(interval);
-                            displayResult(data);
-                        }
-                    } catch (err) {
-                        clearInterval(interval);
-                        consoleOutput.innerHTML = "Error polling: " + err.message;
-                    }
-                }, 2000);
-            }
+        if (data.status !== 'Pending' && data.status !== 'Running' && data.status !== 'Compiling') {
+        clearInterval(interval);
+        displayResult(data);
+        }
+        } catch (err) {
+        clearInterval(interval);
+        consoleOutput.innerHTML = "Error polling: " + err.message;
+        }
+        }, 2000);
+        }
 
-            function displayResult(data) {
-                const consoleOutput = document.getElementById('consoleOutput');
-                let html = `<div class="p-2">
-                    <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">Submission: ${data.status}</h4>
-                    <hr class="my-2 border-secondary"/>`;
+        function displayResult(data) {
+        const consoleOutput = document.getElementById('consoleOutput');
+        let html = `<div class="p-2">
+        <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">Submission: ${data.status}</h4>
+        <hr class="my-2 border-secondary"/>`;
+
+        if (data.results) {
+        const results = JSON.parse(data.results);
+        results.forEach((r, idx) => {
+        const isOk = r.status === 'Accepted';
+        html += `
+        <div class="mb-4 p-2 border ${isOk ? 'border-success' : 'border-danger'} rounded bg-dark">
+        <div class="d-flex justify-content-between">
+        <strong>Test Case #${idx + 1}</strong>
+        <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
+        </div>
+        <div class="mt-2">
+        <small class="text-muted">Input:</small>
+        <pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre>
+        </div>
+        <div class="mt-2">
+        <small class="text-muted">Expected:</small>
+        <pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre>
+        </div>
+        <div class="mt-2">
+        <small class="text-muted">Actual Output (stdout):</small>
+        <pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre>
+        </div>
+        ${r.error ? `
+        <div class="mt-2">
+        <small class="text-muted">Error (stderr):</small>
+        <pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre>
+        </div>` : ''}
+        </div>`;
+        });
+        } else if (data.errorMessage) {
+        html += `<div class="alert alert-danger">${data.errorMessage}</div>`;
+        }
                 
-                if (data.results) {
-                    const results = JSON.parse(data.results);
-                    results.forEach((r, idx) => {
-                        const isOk = r.status === 'Accepted';
-                        html += `
-                        <div class="mb-4 p-2 border ${isOk ? 'border-success' : 'border-danger'} rounded bg-dark">
-                            <div class="d-flex justify-content-between">
-                                <strong>Test Case #${idx + 1}</strong>
-                                <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-muted">Input:</small>
-                                <pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre>
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-muted">Expected:</small>
-                                <pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre>
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-muted">Actual Output (stdout):</small>
-                                <pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre>
-                            </div>
-                            ${r.error ? `
-                            <div class="mt-2">
-                                <small class="text-muted">Error (stderr):</small>
-                                <pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre>
-                            </div>` : ''}
-                        </div>`;
-                    });
-                } else if (data.errorMessage) {
-                    html += `<div class="alert alert-danger">${data.errorMessage}</div>`;
-                }
-                
-                html += `</div>`;
-                consoleOutput.innerHTML = html;
-            }
+        html += `</div>`;
+        consoleOutput.innerHTML = html;
+        }
         });
     </script>
 }

@@ -1,8 +1,12 @@
+// MDSP/JustBigO-Fun---Software-Development-Methodologies/JustBigO(Fun)/Controllers/HomeController.cs
+
 using System.Diagnostics;
 using JustBigO_Fun_.Data;
 using JustBigO_Fun_.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace JustBigO_Fun_.Controllers
 {
@@ -48,6 +52,29 @@ namespace JustBigO_Fun_.Controllers
             }
             return View(problem);
         }
+
+        [Authorize]
+        public async Task<IActionResult> MySubmissions(int? problemId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var query = _db.Submissions
+                .Where(s => s.UserId == userId)
+                .Include(s => s.Problem)
+                .AsQueryable();
+
+            if (problemId.HasValue)
+            {
+                query = query.Where(s => s.ProblemId == problemId.Value);
+                var problem = await _db.Problems.FindAsync(problemId.Value);
+                // MODIFICARE: Tradus în engleză
+                ViewData["Subtitle"] = $"for problem: {problem?.Title}";
+            }
+
+            var submissions = await query.OrderByDescending(s => s.CreatedAt).ToListAsync();
+            return View(submissions);
+        }
+
         public IActionResult Privacy()
         {
             return View();
