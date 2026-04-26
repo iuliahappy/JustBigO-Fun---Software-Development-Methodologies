@@ -2,10 +2,10 @@
 
 #nullable disable
 
-namespace JustBigO_Fun_.Data.Migrations
+namespace JustBigO_Fun_.Migrations
 {
     /// <inheritdoc />
-    public partial class test : Migration
+    public partial class Miahau : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

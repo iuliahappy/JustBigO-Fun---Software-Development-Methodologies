@@ -1,5 +1,3 @@
-// MDSP/JustBigO-Fun---Software-Development-Methodologies/JustBigO(Fun)/Controllers/HomeController.cs
-
 using System.Diagnostics;
 using JustBigO_Fun_.Data;
 using JustBigO_Fun_.Models;
@@ -21,14 +19,72 @@ namespace JustBigO_Fun_.Controllers
             _db = db;
         }
 
-        public async Task<IActionResult> Index()
+        // --- INCEPUT MODIFICARE ---
+        // Am adăugat parametrul `difficultyFilter` și am implementat logica de filtrare `.Where(...)`
+        public async Task<IActionResult> Index(string sortOrder, string difficultyFilter)
         {
-            var problems = await _db.Problems
-                .OrderBy(p => p.OrderIndex)
-                .Select(p => new ProblemListItem(p.Id, p.Title, p.Tags, p.Difficulty))
-                .ToListAsync();
-            return View(problems);
+            // Salvăm parametrii în ViewData pentru a menține starea în butoanele de pe UI
+            ViewData["DifficultySortParm"] = sortOrder == "diff_asc" ? "diff_desc" : "diff_asc";
+            ViewData["CurrentFilter"] = difficultyFilter;
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var problems = await _db.Problems.ToListAsync();
+
+            var userBestStatuses = new Dictionary<int, string>();
+            if (userId != null)
+            {
+                var submissions = await _db.Submissions
+                    .Where(s => s.UserId == userId)
+                    .Select(s => new { s.ProblemId, s.Status })
+                    .ToListAsync();
+
+                foreach (var sub in submissions)
+                {
+                    string statusStr = sub.Status.ToString();
+                    if (!userBestStatuses.ContainsKey(sub.ProblemId) || statusStr == "Accepted")
+                    {
+                        userBestStatuses[sub.ProblemId] = statusStr;
+                    }
+                }
+            }
+
+            var problemItems = problems.Select(p => new ProblemListItem(
+                p.Id,
+                p.Title,
+                p.Tags,
+                p.Difficulty,
+                userBestStatuses.GetValueOrDefault(p.Id, "—")
+            )).AsEnumerable();
+
+            // Dacă s-a selectat o dificultate, aplicăm filtrul
+            if (!string.IsNullOrEmpty(difficultyFilter))
+            {
+                problemItems = problemItems.Where(p => string.Equals(p.Difficulty, difficultyFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Aplicăm sortarea pe lista (posibil deja filtrată)
+            problemItems = sortOrder switch
+            {
+                "diff_asc" => problemItems.OrderBy(p => GetDifficultyWeight(p.Difficulty)),
+                "diff_desc" => problemItems.OrderByDescending(p => GetDifficultyWeight(p.Difficulty)),
+                _ => problemItems.OrderBy(p => problems.First(x => x.Id == p.Id).OrderIndex)
+            };
+
+            return View(problemItems.ToList());
         }
+
+        private static int GetDifficultyWeight(string difficulty)
+        {
+            return difficulty?.ToLowerInvariant() switch
+            {
+                "easy" => 1,
+                "medium" => 2,
+                "hard" => 3,
+                _ => 0
+            };
+        }
+        // --- SFARSIT MODIFICARE ---
 
         public async Task<IActionResult> Solve(int? id)
         {
@@ -67,7 +123,6 @@ namespace JustBigO_Fun_.Controllers
             {
                 query = query.Where(s => s.ProblemId == problemId.Value);
                 var problem = await _db.Problems.FindAsync(problemId.Value);
-                // MODIFICARE: Tradus în engleză
                 ViewData["Subtitle"] = $"for problem: {problem?.Title}";
             }
 

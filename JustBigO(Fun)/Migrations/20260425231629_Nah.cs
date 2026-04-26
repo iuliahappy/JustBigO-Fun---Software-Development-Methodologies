@@ -2,22 +2,17 @@
 
 #nullable disable
 
-namespace JustBigO_Fun_.Data.Migrations
+namespace JustBigO_Fun_.Migrations
 {
     /// <inheritdoc />
-    public partial class Submission : Migration
+    public partial class Nah : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<string>(
-                name: "UserId",
-                table: "Submissions",
-                type: "nvarchar(450)",
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
-                oldNullable: true);
+            migrationBuilder.DropForeignKey(
+                name: "FK_Submissions_AspNetUsers_UserId",
+                table: "Submissions");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Status",
@@ -26,11 +21,6 @@ namespace JustBigO_Fun_.Data.Migrations
                 nullable: false,
                 oldClrType: typeof(int),
                 oldType: "int");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Submissions_UserId",
-                table: "Submissions",
-                column: "UserId");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Submissions_AspNetUsers_UserId",
@@ -48,19 +38,6 @@ namespace JustBigO_Fun_.Data.Migrations
                 name: "FK_Submissions_AspNetUsers_UserId",
                 table: "Submissions");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Submissions_UserId",
-                table: "Submissions");
-
-            migrationBuilder.AlterColumn<string>(
-                name: "UserId",
-                table: "Submissions",
-                type: "nvarchar(max)",
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(450)",
-                oldNullable: true);
-
             migrationBuilder.AlterColumn<int>(
                 name: "Status",
                 table: "Submissions",
@@ -68,6 +45,13 @@ namespace JustBigO_Fun_.Data.Migrations
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "nvarchar(max)");
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_Submissions_AspNetUsers_UserId",
+                table: "Submissions",
+                column: "UserId",
+                principalTable: "AspNetUsers",
+                principalColumn: "Id");
         }
     }
 }

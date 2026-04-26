@@ -12,6 +12,7 @@
                 Live Docker judging
             </span>
             <span class="jbo-kicker-pill">
+            
                 Big O, not big hassle
             </span>
         </div>
@@ -29,12 +30,18 @@
             </a>
             <a asp-area="Identity" asp-page="/Account/Login" class="btn jbo-btn-ghost">
                 View submission history
+         
             </a>
         </div>
         <div class="jbo-hero-meta">
             <span><strong>Docker sandbox</strong> for every run</span>
             <span><strong>3 AI agents</strong> – Transpiler, Analyzer, Mentor</span>
-            <span><strong>Time &amp; Space</strong> Big O badges on submit</span>
+            <span>
+                <strong>
+                    Time &amp;
+                    Space
+                </strong> Big O badges on submit
+            </span>
         </div>
 
     </div>
@@ -43,42 +50,53 @@
             <div class="jbo-glass-header">
                 <div>
                     <div class="jbo-glass-title">Core playground</div>
+                  
                     <div style="font-size: 0.8rem; color: #9ca3af;">Problem ▸ Editor ▸ Verdict</div>
                 </div>
                 <span class="jbo-language-pill">Python ▾</span>
             </div>
             <div class="jbo-split-shell">
                 <div class="jbo-panel">
+              
                     <div class="jbo-panel-header">
                         <span>Problem • Two Sum</span>
                         <span class="jbo-badge">Easy • Array</span>
                     </div>
+                   
                     <div class="jbo-problem-body">
                         Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the
                         two numbers such that they add up to <code>target</code>.<br /><br />
-                        • Single clear statement panel<br />
-                        • No chat, just problem &amp; data
+                        • Single clear
+                        statement panel<br />
+                        • No chat, just problem &amp;
+                        data
                     </div>
                 </div>
                 <div class="jbo-panel">
                     <div class="jbo-panel-header">
-                        <span>Editor • main.py</span>
+                        <span>
+                            Editor •
+                            main.py
+                        </span>
                         <span class="jbo-badge">O(n) • O(n)</span>
                     </div>
                     <div class="jbo-code-preview">
                         <pre>
-def two_sum(nums, target):
-    seen = {}
-    for i, x in enumerate(nums):
-        if target - x in seen:
-            return [seen[target - x], i]
-        seen[x] = i
+                            def two_sum(nums, target):
+                            seen = 
+                            {}
+                            for i, x in enumerate(nums):
+                            if target - x in seen:
+                            return [seen[target - x], i]
+                            seen[x] = i
                         </pre>
                     </div>
+         
                     <div class="jbo-status-chips">
                         <span class="jbo-status-chip jbo-status-chip--accepted">Accepted</span>
                         <span class="jbo-status-chip jbo-status-chip--tle">Time Limit Exceeded</span>
                         <span class="jbo-status-chip jbo-status-chip--wa">Wrong Answer</span>
+       
                     </div>
                 </div>
             </div>
@@ -90,34 +108,85 @@ def two_sum(nums, target):
     <section class="jbo-section-card">
         <header class="jbo-section-header">
             <div>
-                <h2 class="jbo-section-title">Problemset &amp; progress</h2>
+                <h2 class="jbo-section-title">
+                    Problemset &amp;
+                    progress
+                </h2>
                 <p class="jbo-section-subtitle">
                     Browse problems by difficulty and track the status of your submissions.
                 </p>
             </div>
             <div class="jbo-chip-row">
-                <span class="jbo-chip jbo-chip--easy">Easy</span>
-                <span class="jbo-chip jbo-chip--medium">Medium</span>
-                <span class="jbo-chip jbo-chip--hard">Hard</span>
+                <a asp-action="Index"
+                       asp-route-sortOrder="@Context.Request.Query["sortOrder"]"
+                       asp-route-difficultyFilter=""
+                       asp-fragment="problemset"
+                       class="jbo-chip"
+                       style="text-decoration: none; color: inherit; @(string.IsNullOrEmpty(ViewData["CurrentFilter"]?.ToString()) ? "outline: 2px solid currentColor; outline-offset: 2px;" : "opacity: 0.6;")">
+                    All
+                </a>
+                <a asp-action="Index"
+                       asp-route-sortOrder="@Context.Request.Query["sortOrder"]"
+                       asp-route-difficultyFilter="Easy"
+                       asp-fragment="problemset"
+                       class="jbo-chip jbo-chip--easy"
+                       style="text-decoration: none; @(ViewData["CurrentFilter"]?.ToString() == "Easy" ? "outline: 2px solid currentColor; outline-offset: 2px;" : "opacity: 0.6;")">
+                    Easy
+                </a>
+                <a asp-action="Index"
+                       asp-route-sortOrder="@Context.Request.Query["sortOrder"]"
+                       asp-route-difficultyFilter="Medium"
+                       asp-fragment="problemset"
+                       class="jbo-chip jbo-chip--medium"
+                       style="text-decoration: none; @(ViewData["CurrentFilter"]?.ToString() == "Medium" ? "outline: 2px solid currentColor; outline-offset: 2px;" : "opacity: 0.6;")">
+                    Medium
+                </a>
+                <a asp-action="Index"
+                       asp-route-sortOrder="@Context.Request.Query["sortOrder"]"
+                       asp-route-difficultyFilter="Hard"
+                       asp-fragment="problemset"
+                       class="jbo-chip jbo-chip--hard"
+                       style="text-decoration: none; @(ViewData["CurrentFilter"]?.ToString() == "Hard" ? "outline: 2px solid currentColor; outline-offset: 2px;" : "opacity: 0.6;")">
+                    Hard
+                </a>
             </div>
         </header>
+ 
         <table class="jbo-mini-table">
             <thead>
                 <tr>
                     <th>Problem</th>
                     <th>Tags</th>
-                    <th>Difficulty</th>
+                    <th>
+                        <a asp-action="Index"
+                               asp-route-sortOrder="@ViewData["DifficultySortParm"]"
+                               asp-route-difficultyFilter="@ViewData["CurrentFilter"]"
+                               asp-fragment="problemset"
+                               style="color: inherit; text-decoration: underline; cursor: pointer;">
+                            Difficulty ↕
+                        </a>
+                    </th>
                     <th>Best status</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var p in Model ?? Enumerable.Empty<JustBigO_Fun_.Models.ProblemListItem>())
                 {
+     
                     <tr>
                         <td><a asp-action="Solve" asp-route-id="@p.Id" class="jbo-problem-link">@p.Title</a></td>
                         <td>@p.Tags</td>
                         <td><span class="jbo-chip jbo-chip--@GetDifficultyClass(p.Difficulty)">@p.Difficulty</span></td>
-                        <td><span class="jbo-status-chip">—</span></td>
+        
+                        <td>
+                            @{
+                                string statusClass = "";
+                                if (p.BestStatus == "Accepted") statusClass = "jbo-status-chip--accepted";
+                                else if (p.BestStatus == "TimeLimitExceeded") statusClass = "jbo-status-chip--tle";
+                                else if (p.BestStatus != "—") statusClass = "jbo-status-chip--wa";
+                            }
+                            <span class="jbo-status-chip @statusClass">@p.BestStatus</span>
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -126,6 +195,7 @@ def two_sum(nums, target):
 
     <section class="jbo-section-card" id="agents">
         <header class="jbo-section-header">
+        
             <div>
                 <h2 class="jbo-section-title">AI agents overview</h2>
                 <p class="jbo-section-subtitle">
@@ -136,33 +206,41 @@ def two_sum(nums, target):
         <div class="jbo-chip-row" style="margin-bottom: 0.75rem;">
             <span class="jbo-chip jbo-chip--agent">Transpiler agent • change language</span>
             <span class="jbo-chip jbo-chip--agent">Analyzer agent • Big O time/space</span>
-            <span class="jbo-chip jbo-chip--agent">Mentor agent • hints &amp; refactor</span>
+            <span class="jbo-chip jbo-chip--agent">
+                Mentor agent • hints &amp;
+                refactor
+            </span>
         </div>
         <table class="jbo-mini-table">
             <thead>
                 <tr>
                     <th>Agent</th>
                     <th>Role</th>
+               
                     <th>Trigger</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>Transpiler</td>
+                   
                     <td>Rewrites your current solution into another language while preserving logic and variable names.</td>
                     <td>Triggered when you switch the language from the dropdown.</td>
                 </tr>
                 <tr>
                     <td>Analyzer</td>
+       
                     <td>Estimates time and space complexity and detects the paradigm or approach you are using.</td>
                     <td>Runs automatically on every successful Submit.</td>
                 </tr>
                 <tr>
+                 
                     <td>Mentor</td>
                     <td>Generates contextual hints, can finish your current implementation, and suggests refactor steps.</td>
                     <td>Triggered from “Ask for a hint”, “Complete current code”, or “Improve solution”.</td>
                 </tr>
             </tbody>
+       
         </table>
     </section>
 </div>
