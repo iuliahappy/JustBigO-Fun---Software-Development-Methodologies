@@ -45,6 +45,11 @@
             </div>
         </div>
 
+    <div id="aiLoadingIndicator" class="alert alert-info py-2 mb-2 d-flex align-items-center" style="display: none !important; font-size: 0.9rem;">
+        <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+        <strong>AI is transpiling the code...</strong>
+    </div>
+
     <div id="monaco-editor-container" class="jbo-monaco-container" data-problem-id="@(Model?.Id)" style="min-height: 400px;"></div>
 
         <div class="jbo-console-panel">
@@ -89,47 +94,51 @@
         roundedSelection: true
         });
 
-        // 1. Setup SignalR Connection to your new Hub
+        // 0. Setup SignalR Connection to your Hub
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/translationHub")
             .build();
 
-        // 2. Listen for the AI "typing" chunks of code
+        // 1. Listen for the AI "typing" chunks of code (WITH MARKDOWN SCRUBBER)
         connection.on("ReceiveCodeChunk", function (chunk) {
-            const currentCode = window.editor.getValue();
-            window.editor.setValue(currentCode + chunk);
+            let currentCode = window.editor.getValue();
+            let newCode = currentCode + chunk;
 
-            // Scroll to bottom as it types
+            // Scrub out any markdown blocks (```cpp, ```java, or just ```)
+            // We run this on the whole string so it catches ticks even if they streamed in one by one
+            newCode = newCode.replace(/```[a-zA-Z]*\n?/g, "").replace(/```/g, "");
+
+            window.editor.setValue(newCode);
             window.editor.revealLine(window.editor.getModel().getLineCount());
         });
 
-        // Start the connection
         connection.start().catch(err => console.error("SignalR Error: ", err));
 
-        // 3. Keep track of the current language before they change it
         let currentLang = document.getElementById('languageSelect').value;
 
-        // 4. Handle Language Change
+        // 2. Handle Language Change (WITH LOADING BAR)
         document.getElementById('languageSelect').addEventListener('change', async function(e) {
             const newLang = e.target.value;
             const sourceCode = window.editor.getValue();
+            const loadingBar = document.getElementById('aiLoadingIndicator');
 
-            // Update Monaco Editor language
+            // Show the loading bar
+            loadingBar.style.setProperty('display', 'flex', 'important');
+
             monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
-
-            // Clear the editor so the AI has a blank slate
             window.editor.setValue("");
 
-            // Ask the AI to translate via SignalR
             try {
+                // The invoke method will 'await' until the C# method completely finishes streaming
                 await connection.invoke("TranslateCode", sourceCode, currentLang, newLang);
             } catch (err) {
                 console.error("Translation Error: ", err);
                 window.editor.setValue("// Error translating code.");
+            } finally {
+                // Hide the loading bar once streaming is completely done (or if it fails)
+                loadingBar.style.setProperty('display', 'none', 'important');
+                currentLang = newLang;
             }
-
-            // Update state
-            currentLang = newLang;
         });
 
         document.getElementById('btnSubmit').addEventListener('click', async function() {

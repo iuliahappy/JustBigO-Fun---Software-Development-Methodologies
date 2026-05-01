@@ -17,13 +17,11 @@ namespace JustBigO_Fun_.Hubs
         {
             if (string.IsNullOrWhiteSpace(sourceCode)) return;
 
-            var tokenStream = _translatorAgent.TranslateAndStreamAsync(sourceCode, sourceLang, targetLang);
+            // CRITICAL: Call the new Reflexion method, not the streaming one!
+            var finalValidatedCode = await _translatorAgent.TranslateWithReflexionAsync(sourceCode, sourceLang, targetLang);
 
-            await foreach (var token in tokenStream)
-            {
-                // Push each chunk of code to the specific user who asked for it
-                await Clients.Caller.SendAsync("ReceiveCodeChunk", token);
-            }
+            // Send the final, validated code to the frontend UI
+            await Clients.Caller.SendAsync("ReceiveCodeChunk", finalValidatedCode);
         }
     }
 }

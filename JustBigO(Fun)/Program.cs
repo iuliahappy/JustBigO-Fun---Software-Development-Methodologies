@@ -46,9 +46,9 @@ var kernelBuilder = Kernel.CreateBuilder();
 
 // Connect to your local Ollama instance instead of OpenAI
 kernelBuilder.AddOpenAIChatCompletion(
-    modelId: "deepseek-coder:1.3b", // The model you downloaded
+    modelId: "llama3.2", // The model you downloaded
     apiKey: "NoKeyNeeded",          // Ollama ignores this, so we just pass a dummy string
-    endpoint: new Uri("http://localhost:11434/v1") // Ollama's local default address
+    endpoint: new Uri("http://127.0.0.1:11434/v1") // Ollama's local default address
 );
 
 builder.Services.AddSingleton(kernelBuilder.Build());

@@ -315,7 +315,64 @@ public class Driver {{
         return (p.ExitCode, await outTask, await errTask);
     }
 
+    // ADD THIS NEW METHOD FOR THE AI
+    public async Task<(bool IsSuccess, string ErrorMessage)> TestRawCodeAsync(string sourceCode, string language)
+    {
+        // Create a unique temporary folder just for this AI test
+        var workDir = Path.Combine(Path.GetTempPath(), "justbigo_ai", Guid.NewGuid().ToString());
+        Directory.CreateDirectory(workDir);
 
+        try
+        {
+            string cmd = "";
+
+            if (language == "python")
+            {
+                await File.WriteAllTextAsync(Path.Combine(workDir, "solution.py"), sourceCode, Utf8NoBom);
+                cmd = "python -m py_compile solution.py"; // Check Python syntax
+            }
+            else if (language == "cpp")
+            {
+                await File.WriteAllTextAsync(Path.Combine(workDir, "solution.cpp"), sourceCode, Utf8NoBom);
+                cmd = "LC_ALL=C g++ -c solution.cpp -o /dev/null"; // Compile C++ without linking
+            }
+            else if (language == "java")
+            {
+                // Find the class name the AI generated (usually Main or Solution) so we can name the file correctly
+                var classNameMatch = Regex.Match(sourceCode, @"class\s+([A-Za-z0-9_]+)");
+                var className = classNameMatch.Success ? classNameMatch.Groups[1].Value : "Solution";
+
+                await File.WriteAllTextAsync(Path.Combine(workDir, $"{className}.java"), sourceCode, Utf8NoBom);
+                cmd = $"javac {className}.java"; // Compile Java
+            }
+            else
+            {
+                return (false, "Unsupported language.");
+            }
+
+            // Run it in the Sandbox with a 10-second timeout
+            var result = await RunDockerCommandAsync(workDir, cmd, language, 10);
+
+            if (result.ExitCode != 0)
+            {
+                // If it failed, return the exact compiler error to the AI!
+                string errorMsg = string.IsNullOrWhiteSpace(result.Error) ? result.Output : result.Error;
+                return (false, errorMsg);
+            }
+
+            return (true, string.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AI TestRawCodeAsync failed internally.");
+            return (false, ex.Message);
+        }
+        finally
+        {
+            // Always clean up the temporary folder!
+            try { Directory.Delete(workDir, true); } catch { }
+        }
+    }
     private string ToCamelCase(string snakeCase) => Regex.Replace(snakeCase, "_([a-z])", m => m.Groups[1].Value.ToUpper());
 
     private bool IsMatch(string actual, string expected) => actual.Replace(" ", "") == expected.Replace(" ", "");
