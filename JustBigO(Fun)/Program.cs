@@ -1,7 +1,12 @@
 using JustBigO_Fun_.Data;
 using JustBigO_Fun_.Services;
+using JustBigO_Fun_.Services.AI;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.SemanticKernel;
+using JustBigO_Fun_.Hubs;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +37,25 @@ builder.Services.AddAuthorization(options =>
 // --- MODIFICARE FINAL ---
 
 builder.Services.AddControllersWithViews();
+
+// --- MODIFICARE AI AGENT START ---
+
+builder.Services.AddSignalR();
+
+var kernelBuilder = Kernel.CreateBuilder();
+
+// Connect to your local Ollama instance instead of OpenAI
+kernelBuilder.AddOpenAIChatCompletion(
+    modelId: "deepseek-coder:1.3b", // The model you downloaded
+    apiKey: "NoKeyNeeded",          // Ollama ignores this, so we just pass a dummy string
+    endpoint: new Uri("http://localhost:11434/v1") // Ollama's local default address
+);
+
+builder.Services.AddSingleton(kernelBuilder.Build());
+
+builder.Services.AddTransient<ICodeTranslatorAgent, SemanticKernelTranslator>();
+// --- MODIFICARE AI AGENT FINAL ---
+
 
 var app = builder.Build();
 
@@ -69,6 +93,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+
+app.MapHub<TranslationHub>("/translationHub");
 
 app.MapControllerRoute(
     name: "areas",

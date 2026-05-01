@@ -4,7 +4,6 @@
     var codeTemplatesJson = System.Text.Json.JsonSerializer.Serialize(Model?.GetCodeTemplates() ?? new Dictionary<string, string>());
 }
 
-<div class="jbo-workspace">
 
     <div class="jbo-workspace-panel jbo-problem-panel">
         <div class="jbo-panel-header">
@@ -46,7 +45,7 @@
             </div>
         </div>
 
-        <div id="monaco-editor-container" class="jbo-monaco-container" data-problem-id="@(Model?.Id)"></div>
+    <div id="monaco-editor-container" class="jbo-monaco-container" data-problem-id="@(Model?.Id)" style="min-height: 400px;"></div>
 
         <div class="jbo-console-panel">
             <div class="jbo-console-header">
@@ -66,8 +65,8 @@
 </div>
 
 @section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
-
     <script>
         const codeTemplates = @Html.Raw(codeTemplatesJson) || {};
 
@@ -90,11 +89,47 @@
         roundedSelection: true
         });
 
-        document.getElementById('languageSelect').addEventListener('change', function(e) {
-        const newLang = e.target.value;
-        const template = codeTemplates[newLang] || defaultCode;
-        window.editor.setValue(template);
-        monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
+        // 1. Setup SignalR Connection to your new Hub
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/translationHub")
+            .build();
+
+        // 2. Listen for the AI "typing" chunks of code
+        connection.on("ReceiveCodeChunk", function (chunk) {
+            const currentCode = window.editor.getValue();
+            window.editor.setValue(currentCode + chunk);
+
+            // Scroll to bottom as it types
+            window.editor.revealLine(window.editor.getModel().getLineCount());
+        });
+
+        // Start the connection
+        connection.start().catch(err => console.error("SignalR Error: ", err));
+
+        // 3. Keep track of the current language before they change it
+        let currentLang = document.getElementById('languageSelect').value;
+
+        // 4. Handle Language Change
+        document.getElementById('languageSelect').addEventListener('change', async function(e) {
+            const newLang = e.target.value;
+            const sourceCode = window.editor.getValue();
+
+            // Update Monaco Editor language
+            monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
+
+            // Clear the editor so the AI has a blank slate
+            window.editor.setValue("");
+
+            // Ask the AI to translate via SignalR
+            try {
+                await connection.invoke("TranslateCode", sourceCode, currentLang, newLang);
+            } catch (err) {
+                console.error("Translation Error: ", err);
+                window.editor.setValue("// Error translating code.");
+            }
+
+            // Update state
+            currentLang = newLang;
         });
 
         document.getElementById('btnSubmit').addEventListener('click', async function() {
