@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace JustBigO_Fun_.Data.Migrations
+namespace JustBigO_Fun_.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260425143803_Submission")]
-    partial class Submission
+    [Migration("20260425231652_Naha")]
+    partial class Naha
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
