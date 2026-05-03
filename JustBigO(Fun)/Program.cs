@@ -40,15 +40,26 @@ builder.Services.AddControllersWithViews();
 
 // --- MODIFICARE AI AGENT START ---
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.ClientTimeoutInterval = TimeSpan.FromMinutes(5);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+});
+
+// NEW: Create a custom, patient HttpClient that waits up to 10 minutes
+var patientHttpClient = new HttpClient
+{
+    Timeout = TimeSpan.FromMinutes(10)
+};
 
 var kernelBuilder = Kernel.CreateBuilder();
 
 // Connect to your local Ollama instance instead of OpenAI
 kernelBuilder.AddOpenAIChatCompletion(
-    modelId: "llama3.2", // The model you downloaded
-    apiKey: "NoKeyNeeded",          // Ollama ignores this, so we just pass a dummy string
-    endpoint: new Uri("http://127.0.0.1:11434/v1") // Ollama's local default address
+    modelId: "llama3.2",
+    apiKey: "NoKeyNeeded",
+    endpoint: new Uri("http://127.0.0.1:11434/v1"),
+    httpClient: patientHttpClient // NEW: Tell Semantic Kernel to use our patient client!
 );
 
 builder.Services.AddSingleton(kernelBuilder.Build());

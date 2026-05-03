@@ -4,7 +4,7 @@
     var codeTemplatesJson = System.Text.Json.JsonSerializer.Serialize(Model?.GetCodeTemplates() ?? new Dictionary<string, string>());
 }
 
-
+<div class="d-flex w-100 h-100">
     <div class="jbo-workspace-panel jbo-problem-panel">
         <div class="jbo-panel-header">
             <h1 class="jbo-problem-title">@(Model?.OrderIndex). @(Model?.Title)</h1>
@@ -30,29 +30,39 @@
         </div>
     </div>
 
-    <div class="jbo-workspace-right">
+    <div class="jbo-workspace-right w-100 d-flex flex-column">
 
-        <div class="jbo-editor-toolbar">
-            <select class="jbo-language-select" id="languageSelect">
+        <div class="jbo-editor-toolbar d-flex align-items-center gap-3 p-2">
+            <select class="jbo-language-select form-select form-select-sm w-auto" id="languageSelect">
                 <option value="python">Python</option>
                 <option value="java">Java</option>
                 <option value="cpp">C++</option>
             </select>
 
-            <div class="jbo-complexity-badges">
+            <button id="btnTranspile" class="btn btn-sm btn-outline-info d-flex align-items-center gap-1">
+                <i class="bi bi-robot"></i> Transpile to Selected
+            </button>
+
+            <div class="jbo-complexity-badges ms-auto">
                 <span class="jbo-badge-soft" id="timeComplexity" title="Estimated time">⏱ O(?)</span>
                 <span class="jbo-badge-soft" id="spaceComplexity" title="Estimated space">💾 O(?)</span>
             </div>
         </div>
 
-    <div id="aiLoadingIndicator" class="alert alert-info py-2 mb-2 d-flex align-items-center" style="display: none !important; font-size: 0.9rem;">
-        <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
-        <strong>AI is transpiling the code...</strong>
-    </div>
+        <div id="aiLoadingIndicator" class="alert alert-info py-2 mb-2 mx-2 d-flex align-items-center" style="display: none !important; font-size: 0.9rem;">
+            <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+            <strong>AI is transpiling the code...</strong>
+        </div>
 
-    <div id="monaco-editor-container" class="jbo-monaco-container" data-problem-id="@(Model?.Id)" style="min-height: 400px;"></div>
+        <!-- Side-by-Side Editor Layout -->
+        <div class="d-flex gap-2 w-100 px-2" style="min-height: 400px; flex: 1;">
+            <!-- User's Editor (Left) -->
+            <div id="monaco-editor-container" class="jbo-monaco-container w-100" data-problem-id="@(Model?.Id)"></div>
+            <!-- AI's Editor (Right) -->
+            <div id="ai-editor-container" class="jbo-monaco-container w-50 border-start border-info" style="display: none;"></div>
+        </div>
 
-        <div class="jbo-console-panel">
+        <div class="jbo-console-panel mt-2">
             <div class="jbo-console-header">
                 <span>Console Output</span>
                 <div class="jbo-console-actions">
@@ -78,155 +88,181 @@
         // Monaco Editor init
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
         require(['vs/editor/editor.main'], function () {
-        const defaultCode = '// Write your solution here';
-        const initialLang = 'python';
-        const initialCode = codeTemplates[initialLang] || codeTemplates['java'] || codeTemplates['cpp'] || Object.values(codeTemplates)[0] || defaultCode;
+            const defaultCode = '// Write your solution here';
+            const initialLang = 'python';
+            const initialCode = codeTemplates[initialLang] || codeTemplates['java'] || codeTemplates['cpp'] || Object.values(codeTemplates)[0] || defaultCode;
 
-        window.editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
-        value: initialCode,
-        language: initialLang,
-        theme: 'vs-dark',
-        automaticLayout: true,
-        minimap: { enabled: false },
-        fontSize: 14,
-        fontFamily: '"JetBrains Mono", Consolas, monospace',
-        scrollBeyondLastLine: false,
-        roundedSelection: true
-        });
+            // User Editor
+            window.editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
+                value: initialCode,
+                language: initialLang,
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontSize: 14,
+                fontFamily: '"JetBrains Mono", Consolas, monospace',
+                scrollBeyondLastLine: false,
+                roundedSelection: true
+            });
 
-        // 0. Setup SignalR Connection to your Hub
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/translationHub")
-            .build();
+            // AI Editor
+            window.aiEditor = monaco.editor.create(document.getElementById('ai-editor-container'), {
+                value: '// AI translation will appear here...',
+                language: initialLang,
+                theme: 'vs-dark',
+                readOnly: true,
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontSize: 14,
+                fontFamily: '"JetBrains Mono", Consolas, monospace',
+                scrollBeyondLastLine: false,
+                roundedSelection: true
+            });
 
-        // 1. Listen for the AI "typing" chunks of code (WITH MARKDOWN SCRUBBER)
-        connection.on("ReceiveCodeChunk", function (chunk) {
-            let currentCode = window.editor.getValue();
-            let newCode = currentCode + chunk;
+            // SignalR Connection
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/translationHub")
+                .withServerTimeout(300000) // NEW: Wait up to 5 minutes (300,000 ms)
+                .build();
 
-            // Scrub out any markdown blocks (```cpp, ```java, or just ```)
-            // We run this on the whole string so it catches ticks even if they streamed in one by one
-            newCode = newCode.replace(/```[a-zA-Z]*\n?/g, "").replace(/```/g, "");
+            connection.on("ReceiveCodeChunk", function (chunk) {
+                let currentCode = window.aiEditor.getValue();
+                let newCode = currentCode + chunk;
 
-            window.editor.setValue(newCode);
-            window.editor.revealLine(window.editor.getModel().getLineCount());
-        });
+                // Scrub out any markdown blocks
+                newCode = newCode.replace(/```[a-zA-Z]*\n?/g, "").replace(/```/g, "");
 
-        connection.start().catch(err => console.error("SignalR Error: ", err));
+                window.aiEditor.setValue(newCode);
+                window.aiEditor.revealLine(window.aiEditor.getModel().getLineCount());
+            });
 
-        let currentLang = document.getElementById('languageSelect').value;
+            connection.start().catch(err => console.error("SignalR Error: ", err));
 
-        // 2. Handle Language Change (WITH LOADING BAR)
-        document.getElementById('languageSelect').addEventListener('change', async function(e) {
-            const newLang = e.target.value;
-            const sourceCode = window.editor.getValue();
-            const loadingBar = document.getElementById('aiLoadingIndicator');
+            let sourceLang = document.getElementById('languageSelect').value;
 
-            // Show the loading bar
-            loadingBar.style.setProperty('display', 'flex', 'important');
+            // Handle Language Change for User Editor
+            document.getElementById('languageSelect').addEventListener('change', function(e) {
+                sourceLang = e.target.value;
+                monaco.editor.setModelLanguage(window.editor.getModel(), sourceLang);
+            });
 
-            monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
-            window.editor.setValue("");
+            // Handle Transpile Button
+            document.getElementById('btnTranspile').addEventListener('click', async function() {
+                const targetLang = document.getElementById('languageSelect').value;
+                const sourceCode = window.editor.getValue();
+                const loadingBar = document.getElementById('aiLoadingIndicator');
+                const aiContainer = document.getElementById('ai-editor-container');
+                const userContainer = document.getElementById('monaco-editor-container');
 
-            try {
-                // The invoke method will 'await' until the C# method completely finishes streaming
-                await connection.invoke("TranslateCode", sourceCode, currentLang, newLang);
-            } catch (err) {
-                console.error("Translation Error: ", err);
-                window.editor.setValue("// Error translating code.");
-            } finally {
-                // Hide the loading bar once streaming is completely done (or if it fails)
-                loadingBar.style.setProperty('display', 'none', 'important');
-                currentLang = newLang;
+                // Reveal AI editor and adjust widths
+                aiContainer.style.display = 'block';
+                userContainer.classList.remove('w-100');
+                userContainer.classList.add('w-50');
+
+                loadingBar.style.setProperty('display', 'flex', 'important');
+
+                monaco.editor.setModelLanguage(window.aiEditor.getModel(), targetLang);
+                window.aiEditor.setValue("");
+
+                try {
+                    await connection.invoke("TranslateCode", sourceCode, sourceLang, targetLang);
+                } catch (err) {
+                    console.error("Translation Error: ", err);
+                    window.aiEditor.setValue("// Error translating code.");
+                } finally {
+                    loadingBar.style.setProperty('display', 'none', 'important');
+                }
+            });
+
+            // Submit Button Logic
+            document.getElementById('btnSubmit').addEventListener('click', async function() {
+                const sourceCode = window.editor.getValue();
+                const language = document.getElementById('languageSelect').value;
+                const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
+                const consoleOutput = document.getElementById('consoleOutput');
+
+                consoleOutput.innerHTML = "Submitting...";
+
+                try {
+                    const response = await fetch('/api/submission', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
+                    });
+
+                    if (!response.ok) throw new Error(await response.text());
+
+                    const data = await response.json();
+                    pollStatus(data.submissionId);
+                } catch (err) {
+                    consoleOutput.innerHTML = "Error: " + err.message;
+                }
+            });
+
+            // Poll Status Logic
+            async function pollStatus(id) {
+                const consoleOutput = document.getElementById('consoleOutput');
+                const interval = setInterval(async () => {
+                    try {
+                        const response = await fetch('/api/submission/' + id);
+                        const data = await response.json();
+
+                        consoleOutput.innerHTML = "Status: " + data.status + "...";
+
+                        if (data.status !== 'Pending' && data.status !== 'Running' && data.status !== 'Compiling') {
+                            clearInterval(interval);
+                            displayResult(data);
+                        }
+                    } catch (err) {
+                        clearInterval(interval);
+                        consoleOutput.innerHTML = "Error polling: " + err.message;
+                    }
+                }, 2000);
             }
-        });
 
-        document.getElementById('btnSubmit').addEventListener('click', async function() {
-        const sourceCode = window.editor.getValue();
-        const language = document.getElementById('languageSelect').value;
-        const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
-        const consoleOutput = document.getElementById('consoleOutput');
-                
-        consoleOutput.innerHTML = "Submitting...";
-                
-        try {
-        const response = await fetch('/api/submission', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
-        });
-                    
-        if (!response.ok) throw new Error(await response.text());
-                    
-        const data = await response.json();
-        pollStatus(data.submissionId);
-        } catch (err) {
-        consoleOutput.innerHTML = "Error: " + err.message;
-        }
-        });
+            // Display Results Logic
+            function displayResult(data) {
+                const consoleOutput = document.getElementById('consoleOutput');
+                let html = `<div class="p-2">
+                <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">Submission: ${data.status}</h4>
+                <hr class="my-2 border-secondary"/>`;
 
-        async function pollStatus(id) {
-        const consoleOutput = document.getElementById('consoleOutput');
-        const interval = setInterval(async () => {
-        try {
-        const response = await fetch('/api/submission/' + id);
-        const data = await response.json();
-                        
-        consoleOutput.innerHTML = "Status: " + data.status + "...";
-                        
-        if (data.status !== 'Pending' && data.status !== 'Running' && data.status !== 'Compiling') {
-        clearInterval(interval);
-        displayResult(data);
-        }
-        } catch (err) {
-        clearInterval(interval);
-        consoleOutput.innerHTML = "Error polling: " + err.message;
-        }
-        }, 2000);
-        }
+                if (data.results) {
+                    const results = JSON.parse(data.results);
+                    results.forEach((r, idx) => {
+                        const isOk = r.status === 'Accepted';
+                        html += `
+                        <div class="mb-4 p-2 border ${isOk ? 'border-success' : 'border-danger'} rounded bg-dark">
+                            <div class="d-flex justify-content-between">
+                                <strong>Test Case #${idx + 1}</strong>
+                                <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Input:</small>
+                                <pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Expected:</small>
+                                <pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Actual Output (stdout):</small>
+                                <pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre>
+                            </div>
+                            ${r.error ? `
+                            <div class="mt-2">
+                                <small class="text-muted">Error (stderr):</small>
+                                <pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre>
+                            </div>` : ''}
+                        </div>`;
+                    });
+                } else if (data.errorMessage) {
+                    html += `<div class="alert alert-danger">${data.errorMessage}</div>`;
+                }
 
-        function displayResult(data) {
-        const consoleOutput = document.getElementById('consoleOutput');
-        let html = `<div class="p-2">
-        <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">Submission: ${data.status}</h4>
-        <hr class="my-2 border-secondary"/>`;
-
-        if (data.results) {
-        const results = JSON.parse(data.results);
-        results.forEach((r, idx) => {
-        const isOk = r.status === 'Accepted';
-        html += `
-        <div class="mb-4 p-2 border ${isOk ? 'border-success' : 'border-danger'} rounded bg-dark">
-        <div class="d-flex justify-content-between">
-        <strong>Test Case #${idx + 1}</strong>
-        <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
-        </div>
-        <div class="mt-2">
-        <small class="text-muted">Input:</small>
-        <pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre>
-        </div>
-        <div class="mt-2">
-        <small class="text-muted">Expected:</small>
-        <pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre>
-        </div>
-        <div class="mt-2">
-        <small class="text-muted">Actual Output (stdout):</small>
-        <pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre>
-        </div>
-        ${r.error ? `
-        <div class="mt-2">
-        <small class="text-muted">Error (stderr):</small>
-        <pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre>
-        </div>` : ''}
-        </div>`;
-        });
-        } else if (data.errorMessage) {
-        html += `<div class="alert alert-danger">${data.errorMessage}</div>`;
-        }
-                
-        html += `</div>`;
-        consoleOutput.innerHTML = html;
-        }
+                html += `</div>`;
+                consoleOutput.innerHTML = html;
+            }
         });
     </script>
 }
