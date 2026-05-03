@@ -162,6 +162,28 @@ namespace JustBigO_Fun_.Controllers
         }
 
         [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> GetHint(
+            [FromBody] SubmissionViewModel model,
+            [FromServices] IHintGenerator hintGenerator)
+        {
+            if (model.ProblemId <= 0)
+                return BadRequest("ProblemId invalid.");
+
+            var problem = await _db.Problems.FirstOrDefaultAsync(p => p.Id == model.ProblemId);
+            if (problem == null)
+                return NotFound("Problema nu a fost gasita.");
+
+            var hint = await hintGenerator.GenerateHintAsync(
+                problem.Title,
+                problem.Description,
+                model.SourceCode ?? string.Empty,
+                string.IsNullOrWhiteSpace(model.Language) ? "unknown" : model.Language);
+
+            return Json(new { hint });
+        }
+
+        [HttpPost]
         public async Task<IActionResult> SubmitSolution(
             [FromBody] SubmissionViewModel model,
             [FromServices] ICodeExecutor codeExecutor,

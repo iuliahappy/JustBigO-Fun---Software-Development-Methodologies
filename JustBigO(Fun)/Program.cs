@@ -15,6 +15,7 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddScoped<ICodeExecutor, DockerCodeExecutor>();
 // Am folosit AddHttpClient pentru ca Agentul AI face request-uri externe pe internet
 builder.Services.AddHttpClient<IComplexityAnalyzer, AgentComplexityAnalyzer>();
+builder.Services.AddHttpClient<IHintGenerator, GeminiHintGenerator>();
 // -----------------------------
 
 // --- CONFIGURARE IDENTITY ---
