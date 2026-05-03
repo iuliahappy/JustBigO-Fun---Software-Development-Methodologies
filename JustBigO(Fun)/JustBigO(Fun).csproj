@@ -17,6 +17,10 @@
     <EmbeddedResource Remove="NewFolder\**" />
     <None Remove="NewFolder1\**" />
     <None Remove="NewFolder\**" />
+    <Compile Remove="Data\Migrations\**" />
+    <Content Remove="Data\Migrations\**" />
+    <EmbeddedResource Remove="Data\Migrations\**" />
+    <None Remove="Data\Migrations\**" />
   </ItemGroup>
 
   <ItemGroup>
