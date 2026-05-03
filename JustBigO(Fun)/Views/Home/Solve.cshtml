@@ -1,6 +1,7 @@
 @model JustBigO_Fun_.Models.Problem
 @{
     ViewData["Title"] = "Solve: " + (Model?.Title ?? "Problem");
+    // AICI este variabila care îți dădea eroare că lipsește:
     var codeTemplatesJson = System.Text.Json.JsonSerializer.Serialize(Model?.GetCodeTemplates() ?? new Dictionary<string, string>());
 }
 
@@ -102,51 +103,81 @@
         const language = document.getElementById('languageSelect').value;
         const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
         const consoleOutput = document.getElementById('consoleOutput');
-                
+        const btnSubmit = document.getElementById('btnSubmit');
+                        
         consoleOutput.innerHTML = "Submitting...";
-                
+        btnSubmit.disabled = true;
+
+        // Resetăm UI-ul pentru complexitate
+        const tcBadge = document.getElementById('timeComplexity');
+        const scBadge = document.getElementById('spaceComplexity');
+        tcBadge.innerText = "⏱ O(?)";
+        scBadge.innerText = "💾 O(?)";
+        tcBadge.className = "jbo-badge-soft";
+        scBadge.className = "jbo-badge-soft";
+                        
         try {
+        // 1. APELĂM EXECUTORUL TĂU ORIGINAL (pentru Teste via Docker)
         const response = await fetch('/api/submission', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
         });
                     
+        if (response.redirected && response.url.includes('Login')) {
+        window.location.href = response.url;
+        return;
+        }
+
         if (!response.ok) throw new Error(await response.text());
-                    
+                                
         const data = await response.json();
+                    
+        // 2. PORNEȘTE POLLING-UL ORIGINAL PENTRU STATUS
         pollStatus(data.submissionId);
         } catch (err) {
         consoleOutput.innerHTML = "Error: " + err.message;
+        btnSubmit.disabled = false;
         }
         });
 
         async function pollStatus(id) {
         const consoleOutput = document.getElementById('consoleOutput');
+        const btnSubmit = document.getElementById('btnSubmit');
+
         const interval = setInterval(async () => {
         try {
         const response = await fetch('/api/submission/' + id);
+                        
+        if (response.redirected && response.url.includes('Login')) {
+        clearInterval(interval);
+        window.location.href = response.url;
+        return;
+        }
+
         const data = await response.json();
-                        
         consoleOutput.innerHTML = "Status: " + data.status + "...";
-                        
+                                        
         if (data.status !== 'Pending' && data.status !== 'Running' && data.status !== 'Compiling') {
         clearInterval(interval);
         displayResult(data);
+        btnSubmit.disabled = false;
         }
         } catch (err) {
         clearInterval(interval);
         consoleOutput.innerHTML = "Error polling: " + err.message;
+        btnSubmit.disabled = false;
         }
         }, 2000);
         }
 
-        function displayResult(data) {
+        async function displayResult(data) {
         const consoleOutput = document.getElementById('consoleOutput');
         let html = `<div class="p-2">
         <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">Submission: ${data.status}</h4>
         <hr class="my-2 border-secondary"/>`;
 
+        // --- AFIȘARE TESTE ORIGINALE ---
         if (data.results) {
         const results = JSON.parse(data.results);
         results.forEach((r, idx) => {
@@ -157,31 +188,56 @@
         <strong>Test Case #${idx + 1}</strong>
         <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
         </div>
-        <div class="mt-2">
-        <small class="text-muted">Input:</small>
-        <pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre>
-        </div>
-        <div class="mt-2">
-        <small class="text-muted">Expected:</small>
-        <pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre>
-        </div>
-        <div class="mt-2">
-        <small class="text-muted">Actual Output (stdout):</small>
-        <pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre>
-        </div>
-        ${r.error ? `
-        <div class="mt-2">
-        <small class="text-muted">Error (stderr):</small>
-        <pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre>
-        </div>` : ''}
+        <div class="mt-2"><small class="text-muted">Input:</small><pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre></div>
+        <div class="mt-2"><small class="text-muted">Expected:</small><pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre></div>
+        <div class="mt-2"><small class="text-muted">Actual Output:</small><pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre></div>
+        ${r.error ? `<div class="mt-2"><small class="text-muted">Error:</small><pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre></div>` : ''}
         </div>`;
         });
         } else if (data.errorMessage) {
         html += `<div class="alert alert-danger">${data.errorMessage}</div>`;
         }
-                
         html += `</div>`;
         consoleOutput.innerHTML = html;
+
+        // --- NOU: APELĂM AGENTUL AI DOAR DACĂ A FOST ACCEPTAT ---
+        if (data.status === 'Accepted') {
+        const tcBadge = document.getElementById('timeComplexity');
+        const scBadge = document.getElementById('spaceComplexity');
+                    
+        tcBadge.innerText = "⏱ Analyzing...";
+        scBadge.innerText = "💾 Analyzing...";
+        tcBadge.classList.add('text-warning');
+        scBadge.classList.add('text-warning');
+
+        try {
+        const sourceCode = window.editor.getValue();
+        const aiResponse = await fetch('/Home/AnalyzeComplexity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+        problemId: 0,
+        sourceCode: sourceCode,
+        language: document.getElementById('languageSelect').value
+        })
+        });
+
+        if (aiResponse.ok) {
+        const aiData = await aiResponse.json();
+        tcBadge.innerText = `⏱ ${aiData.timeComplexity}`;
+        scBadge.innerText = `💾 ${aiData.spaceComplexity}`;
+                            
+        tcBadge.classList.remove('text-warning');
+        scBadge.classList.remove('text-warning');
+        tcBadge.classList.add('text-success', 'fw-bold');
+        scBadge.classList.add('text-success', 'fw-bold');
+        }
+        } catch (e) {
+        console.error("Eroare la Agentul AI:", e);
+        tcBadge.innerText = "⏱ O(?)";
+        scBadge.innerText = "💾 O(?)";
+        }
+        }
         }
         });
     </script>

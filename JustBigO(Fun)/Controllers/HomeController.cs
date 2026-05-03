@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using JustBigO_Fun_.Data;
 using JustBigO_Fun_.Models;
+using JustBigO_Fun_.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 using System.Security.Claims;
 
 namespace JustBigO_Fun_.Controllers
@@ -139,6 +141,61 @@ namespace JustBigO_Fun_.Controllers
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AnalyzeComplexity(
+    [FromBody] SubmissionViewModel model,
+    [FromServices] IComplexityAnalyzer complexityAnalyzer)
+        {
+            if (string.IsNullOrWhiteSpace(model.SourceCode)) return BadRequest("Codul este gol.");
+
+            // DECOMENTĂM ASTA CA SĂ MEARGĂ PE BUNE:
+            var complexity = await complexityAnalyzer.AnalyzeCodeAsync(model.SourceCode);
+
+            // RETURNĂM REZULTATUL REAL:
+            return Json(new
+            {
+                timeComplexity = complexity.TimeComplexity,
+                spaceComplexity = complexity.SpaceComplexity
+            });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SubmitSolution(
+            [FromBody] SubmissionViewModel model,
+            [FromServices] ICodeExecutor codeExecutor,
+            [FromServices] IComplexityAnalyzer complexityAnalyzer)
+        {
+            if (!ModelState.IsValid) return BadRequest("Date invalide.");
+
+            // 1. Executăm codul prin Docker
+            await codeExecutor.ExecuteAsync(model.ProblemId);
+
+            // TODO: Aici îți pui logica ta prin care citești dacă testele au trecut
+            // Momentan simulăm succesul pentru a vedea AI-ul în acțiune pe interfață
+            bool isSuccess = true;
+            string testCasesJson = "[]";
+
+            string timeO = "O(?)";
+            string spaceO = "O(?)";
+
+            // 2. Dacă codul trece testele, apelăm Agentul AI (Acceptance Criteria)
+            if (isSuccess)
+            {
+                var complexity = await complexityAnalyzer.AnalyzeCodeAsync(model.SourceCode);
+                timeO = complexity.TimeComplexity;
+                spaceO = complexity.SpaceComplexity;
+            }
+
+            // 3. Returnăm formatul exact pe care îl așteaptă JavaScript-ul
+            return Json(new
+            {
+                status = isSuccess ? "Accepted" : "Failed",
+                results = testCasesJson,
+                timeComplexity = timeO,
+                spaceComplexity = spaceO
+            });
         }
     }
 }
