@@ -16,6 +16,9 @@ builder.Services.AddScoped<ICodeExecutor, DockerCodeExecutor>();
 // Am folosit AddHttpClient pentru ca Agentul AI face request-uri externe pe internet
 builder.Services.AddHttpClient<IComplexityAnalyzer, AgentComplexityAnalyzer>();
 builder.Services.AddHttpClient<IHintGenerator, GeminiHintGenerator>();
+builder.Services.AddHttpClient<IApproachAnalyzer, GeminiApproachAnalyzer>();
+builder.Services.AddHttpClient<ICodeCompleter, GeminiCodeCompleter>();
+builder.Services.AddScoped<ICurrentCodeCompletionService, CurrentCodeCompletionService>();
 // -----------------------------
 
 // --- CONFIGURARE IDENTITY ---
@@ -47,7 +50,8 @@ using (var scope = app.Services.CreateScope())
 
     // Decomenteaza aceste linii daca ai nevoie sa populezi din nou baza de date
     // await ProblemSeeder.SeedAsync(db);
-    // await AdminSeeder.SeedAsync(roleManager, userManager);
+    // Admin password: set User Secret Seeding:AdminPassword (see AdminSeeder.AdminPasswordConfigurationKey)
+    // await AdminSeeder.SeedAsync(roleManager, userManager, app.Configuration);
 }
 
 // Configure the HTTP request pipeline.

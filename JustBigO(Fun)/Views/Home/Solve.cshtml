@@ -41,6 +41,10 @@
                 <option value="cpp">C++</option>
             </select>
 
+            <button type="button" class="btn jbo-btn-ghost btn-sm" id="btnCompleteCode" title="AI completes your partial solution on the same approach (separate from Submit)">
+                ✨ Complete current code
+            </button>
+
             <div class="jbo-complexity-badges">
                 <span class="jbo-badge-soft" id="timeComplexity" title="Estimated time">⏱ O(?)</span>
                 <span class="jbo-badge-soft" id="spaceComplexity" title="Estimated space">💾 O(?)</span>
@@ -71,6 +75,15 @@
 
     <script>
         const codeTemplates = @Html.Raw(codeTemplatesJson) || {};
+
+        function escapeHtml(str) {
+        if (str == null || str === '') return '';
+        return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+        }
 
         // Monaco Editor init
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
@@ -175,6 +188,60 @@
         hintContainer.textContent = "Error requesting hint: " + err.message;
         } finally {
         askHintBtn.disabled = false;
+        }
+        });
+
+        document.getElementById('btnCompleteCode').addEventListener('click', async function() {
+        const btn = document.getElementById('btnCompleteCode');
+        const consoleOutput = document.getElementById('consoleOutput');
+        const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
+        const sourceCode = window.editor ? window.editor.getValue() : '';
+        const language = document.getElementById('languageSelect').value;
+
+        btn.disabled = true;
+        consoleOutput.innerHTML = '<div class="p-2 text-info">Analyzing your approach and generating a full solution…</div>';
+
+        try {
+        const response = await fetch('/Home/CompleteCurrentCode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+        problemId: parseInt(problemId),
+        sourceCode: sourceCode,
+        language: language
+        })
+        });
+
+        if (response.redirected && response.url.includes('Login') || response.status === 401) {
+        window.location.href = '/Identity/Account/Login';
+        return;
+        }
+
+        if (!response.ok) throw new Error(await response.text());
+
+        const data = await response.json();
+        if (window.editor && data.code) {
+        window.editor.setValue(data.code);
+        monaco.editor.setModelLanguage(window.editor.getModel(), language);
+        }
+
+        let msg = '<div class="p-2">';
+        if (data.approachSummary) {
+        msg += '<div class="mb-2"><strong>Detected approach</strong><pre class="small text-muted mb-0" style="white-space:pre-wrap;">' +
+        escapeHtml(data.approachSummary) + '</pre></div>';
+        }
+        if (data.testsPassed) {
+        msg += '<div class="text-success"><strong>Tests:</strong> all passed (local check).</div>';
+        } else {
+        msg += '<div class="text-warning"><strong>Tests:</strong> ' + (data.status || 'not all passed') + '. ';
+        msg += (data.message || 'Review the result or edit the code, then use Submit.') + '</div>';
+        }
+        msg += '</div>';
+        consoleOutput.innerHTML = msg;
+        } catch (err) {
+        consoleOutput.innerHTML = '<div class="p-2 text-danger">Complete current code failed: ' + err.message + '</div>';
+        } finally {
+        btn.disabled = false;
         }
         });
 
