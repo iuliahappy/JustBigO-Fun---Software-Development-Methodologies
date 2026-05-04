@@ -30,6 +30,25 @@
             </button>
             <div id="hintContainer" class="jbo-hint-content"></div>
         </div>
+
+        <div class="jbo-hint-section">
+            <button type="button" class="btn jbo-btn-ghost w-100 d-flex justify-content-center align-items-center gap-2" id="btnImproveSolution" disabled
+                    title="Submit your code and wait until the judge reports Accepted on this page.">
+                <span>Improve solution</span>
+                <span class="badge bg-secondary">Mentor</span>
+            </button>
+            <p class="small text-muted mb-0 mt-1 px-1">Unlocked only after a successful <strong>Submit</strong> with status <strong>Accepted</strong> (Docker) on this page.</p>
+            <div id="improveSolutionPanel" class="jbo-improve-panel d-none mt-2" aria-readonly="true">
+                <div class="jbo-improve-readonly rounded p-2 small">
+                    <div class="fw-semibold text-secondary mb-1">Code area to refactor</div>
+                    <pre id="improveCodeBlock" class="jbo-improve-pre mb-3"></pre>
+                    <div class="fw-semibold text-secondary mb-1">Optimal data structure / pattern</div>
+                    <pre id="improveOptimalDs" class="jbo-improve-pre mb-3"></pre>
+                    <div class="fw-semibold text-secondary mb-1">Refactoring steps (read-only)</div>
+                    <pre id="improveSteps" class="jbo-improve-pre mb-0"></pre>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="jbo-workspace-right">
@@ -104,6 +123,20 @@
         roundedSelection: true
         });
 
+        const problemIdSolve = parseInt(document.getElementById('monaco-editor-container').dataset.problemId, 10);
+        let improveUnlockedThisSession = false;
+
+        function setImproveSolutionEnabled(enabled) {
+        const btn = document.getElementById('btnImproveSolution');
+        if (!btn) return;
+        btn.disabled = !enabled;
+        btn.title = enabled
+        ? 'Compare your accepted solution with an optimal approach and get refactoring steps (read-only panel below).'
+        : 'Submit your code and wait until the judge reports Accepted on this page.';
+        }
+
+        setImproveSolutionEnabled(false);
+
         document.getElementById('languageSelect').addEventListener('change', function(e) {
         const newLang = e.target.value;
         const template = codeTemplates[newLang] || defaultCode;
@@ -120,6 +153,8 @@
 
         consoleOutput.innerHTML = "Submitting...";
         btnSubmit.disabled = true;
+        improveUnlockedThisSession = false;
+        setImproveSolutionEnabled(false);
 
         // Reset complexity badges in the UI
         const tcBadge = document.getElementById('timeComplexity');
@@ -245,6 +280,60 @@
         }
         });
 
+        document.getElementById('btnImproveSolution').addEventListener('click', async function() {
+        const btn = document.getElementById('btnImproveSolution');
+        if (btn.disabled) return;
+
+        const panel = document.getElementById('improveSolutionPanel');
+        const preCode = document.getElementById('improveCodeBlock');
+        const preDs = document.getElementById('improveOptimalDs');
+        const preSteps = document.getElementById('improveSteps');
+        const sourceCode = window.editor ? window.editor.getValue() : '';
+        const language = document.getElementById('languageSelect').value;
+
+        btn.disabled = true;
+        panel.classList.remove('d-none');
+        preCode.textContent = 'Loading…';
+        preDs.textContent = '';
+        preSteps.textContent = '';
+
+        try {
+        const response = await fetch('/Home/ImproveSolution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+        problemId: problemIdSolve,
+        sourceCode: sourceCode,
+        language: language
+        })
+        });
+
+        if (response.redirected && response.url.includes('Login') || response.status === 401) {
+        window.location.href = '/Identity/Account/Login';
+        return;
+        }
+
+        if (!response.ok) {
+        const errText = await response.text();
+        preCode.textContent = '';
+        preDs.textContent = '';
+        preSteps.textContent = errText || 'Request failed.';
+        return;
+        }
+
+        const data = await response.json();
+        preCode.textContent = data.codeBlockToModify || '(none)';
+        preDs.textContent = data.optimalDataStructure || '(none)';
+        preSteps.textContent = data.refactoringSteps || '(none)';
+        } catch (err) {
+        preCode.textContent = '';
+        preDs.textContent = '';
+        preSteps.textContent = 'Error: ' + err.message;
+        } finally {
+        if (improveUnlockedThisSession) setImproveSolutionEnabled(true);
+        }
+        });
+
         async function pollStatus(id) {
         const consoleOutput = document.getElementById('consoleOutput');
         const btnSubmit = document.getElementById('btnSubmit');
@@ -304,6 +393,14 @@
         }
         html += `</div>`;
         consoleOutput.innerHTML = html;
+
+        if (data.status === 'Accepted') {
+        improveUnlockedThisSession = true;
+        setImproveSolutionEnabled(true);
+        } else {
+        improveUnlockedThisSession = false;
+        setImproveSolutionEnabled(false);
+        }
 
         // --- NEW: Run AI analysis only when accepted ---
         if (data.status === 'Accepted') {

@@ -213,6 +213,74 @@ namespace JustBigO_Fun_.Controllers
             });
         }
 
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> BestSubmissionStatus(int problemId, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            // "Current" outcome: latest submission only (not an older Accepted if user later failed).
+            var latestStatus = await _db.Submissions
+                .Where(s => s.UserId == userId && s.ProblemId == problemId)
+                .OrderByDescending(s => s.CreatedAt)
+                .Select(s => s.Status)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var hasAccepted = latestStatus == SubmissionStatus.Accepted;
+
+            return Json(new { hasAccepted, bestStatus = hasAccepted ? "Accepted" : "NotAccepted" });
+        }
+
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> ImproveSolution(
+            [FromBody] SubmissionViewModel model,
+            [FromServices] IRefactoringSuggestionGenerator refactoringGenerator,
+            CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            if (model.ProblemId <= 0)
+                return BadRequest("Invalid ProblemId.");
+            if (string.IsNullOrWhiteSpace(model.SourceCode))
+                return BadRequest("Source code is required.");
+
+            var latestStatus = await _db.Submissions
+                .Where(s => s.UserId == userId && s.ProblemId == model.ProblemId)
+                .OrderByDescending(s => s.CreatedAt)
+                .Select(s => s.Status)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (latestStatus != SubmissionStatus.Accepted)
+            {
+                return BadRequest(
+                    "Improve solution is only available when your latest submission for this problem is Accepted (all Docker tests passed).");
+            }
+
+            var problem = await _db.Problems.FirstOrDefaultAsync(p => p.Id == model.ProblemId, cancellationToken);
+            if (problem == null)
+                return NotFound("Problem not found.");
+
+            var lang = string.IsNullOrWhiteSpace(model.Language) ? "python" : model.Language;
+            var suggestion = await refactoringGenerator.GenerateAsync(
+                problem.Title,
+                problem.Description,
+                model.SourceCode,
+                lang,
+                cancellationToken);
+
+            return Json(new
+            {
+                codeBlockToModify = suggestion.CodeBlockToModify,
+                optimalDataStructure = suggestion.OptimalDataStructure,
+                refactoringSteps = suggestion.RefactoringSteps
+            });
+        }
+
         [HttpPost]
         public async Task<IActionResult> SubmitSolution(
             [FromBody] SubmissionViewModel model,
