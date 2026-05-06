@@ -24,6 +24,7 @@ builder.Services.AddHttpClient<IHintGenerator, GeminiHintGenerator>();
 builder.Services.AddHttpClient<IApproachAnalyzer, GeminiApproachAnalyzer>();
 builder.Services.AddHttpClient<ICodeCompleter, GeminiCodeCompleter>();
 builder.Services.AddScoped<ICurrentCodeCompletionService, CurrentCodeCompletionService>();
+builder.Services.AddHttpClient<IRefactoringSuggestionGenerator, GeminiRefactoringSuggestionGenerator>();
 // -----------------------------
 
 // --- CONFIGURARE IDENTITY ---
