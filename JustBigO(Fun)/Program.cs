@@ -1,7 +1,12 @@
 using JustBigO_Fun_.Data;
 using JustBigO_Fun_.Services;
+using JustBigO_Fun_.Services.AI;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.SemanticKernel;
+using JustBigO_Fun_.Hubs;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +41,36 @@ builder.Services.AddAuthorization(options => {
 // ----------------------------
 
 builder.Services.AddControllersWithViews();
+
+// --- MODIFICARE AI AGENT START ---
+
+builder.Services.AddSignalR(options =>
+{
+    options.ClientTimeoutInterval = TimeSpan.FromMinutes(5);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+});
+
+// NEW: Create a custom, patient HttpClient that waits up to 10 minutes
+var patientHttpClient = new HttpClient
+{
+    Timeout = TimeSpan.FromMinutes(10)
+};
+
+var kernelBuilder = Kernel.CreateBuilder();
+
+// Connect to your local Ollama instance instead of OpenAI
+kernelBuilder.AddOpenAIChatCompletion(
+    modelId: "llama3.2",
+    apiKey: "NoKeyNeeded",
+    endpoint: new Uri("http://127.0.0.1:11434/v1"),
+    httpClient: patientHttpClient // NEW: Tell Semantic Kernel to use our patient client!
+);
+
+builder.Services.AddSingleton(kernelBuilder.Build());
+
+builder.Services.AddTransient<ICodeTranslatorAgent, SemanticKernelTranslator>();
+// --- MODIFICARE AI AGENT FINAL ---
+
 
 var app = builder.Build();
 
@@ -72,6 +107,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+
+app.MapHub<TranslationHub>("/translationHub");
+
 app.MapControllerRoute(
     name: "areas",
     pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}")
