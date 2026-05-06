@@ -1,7 +1,7 @@
 @model JustBigO_Fun_.Models.Problem
 @{
     ViewData["Title"] = "Solve: " + (Model?.Title ?? "Problem");
-    // AICI este variabila care îți dădea eroare că lipsește:
+    // This variable is required by the editor script:
     var codeTemplatesJson = System.Text.Json.JsonSerializer.Serialize(Model?.GetCodeTemplates() ?? new Dictionary<string, string>());
 }
 
@@ -24,8 +24,8 @@
 
         <div class="jbo-hint-section">
             <button class="btn jbo-btn-ghost w-100 d-flex justify-content-center align-items-center gap-2" id="askHintBtn">
-                <span>💡 Ask for a Hint (AI Mentor)</span>
-                <span class="badge bg-secondary">3 left</span>
+                <span>💡 Ask for a Hint</span>
+                <span class="badge bg-secondary">AI Mentor</span>
             </button>
             <div id="hintContainer" class="jbo-hint-content"></div>
         </div>
@@ -175,6 +175,44 @@
                 }
             });
 
+            // Ask for Hint Button Logic
+            document.getElementById('askHintBtn').addEventListener('click', async function() {
+                const hintContainer = document.getElementById('hintContainer');
+                const askHintBtn = document.getElementById('askHintBtn');
+                const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
+                const sourceCode = window.editor ? window.editor.getValue() : '';
+                const language = document.getElementById('languageSelect').value;
+
+                askHintBtn.disabled = true;
+                hintContainer.textContent = "Generating hint...";
+
+                try {
+                    const response = await fetch('/Home/GetHint', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            problemId: parseInt(problemId),
+                            sourceCode: sourceCode,
+                            language: language
+                        })
+                    });
+
+                    if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
+                        window.location.href = '/Identity/Account/Login';
+                        return;
+                    }
+
+                    if (!response.ok) throw new Error(await response.text());
+
+                    const data = await response.json();
+                    hintContainer.textContent = data.hint || "No hint was returned.";
+                } catch (err) {
+                    hintContainer.textContent = "Error requesting hint: " + err.message;
+                } finally {
+                    askHintBtn.disabled = false;
+                }
+            });
+
             // Submit Button Logic
             document.getElementById('btnSubmit').addEventListener('click', async function() {
                 const sourceCode = window.editor.getValue();
@@ -201,8 +239,8 @@
                         body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
                     });
 
-                    if (response.redirected && response.url.includes('Login')) {
-                        window.location.href = response.url;
+                    if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
+                        window.location.href = '/Identity/Account/Login';
                         return;
                     }
 
@@ -302,11 +340,12 @@
 
                     try {
                         const sourceCode = window.editor.getValue();
+                        const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
                         const aiResponse = await fetch('/Home/AnalyzeComplexity', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                problemId: 0,
+                                problemId: parseInt(problemId),
                                 sourceCode: sourceCode,
                                 language: document.getElementById('languageSelect').value
                             })

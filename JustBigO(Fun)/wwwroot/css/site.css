@@ -650,6 +650,7 @@ body {
     color: #9ca3af;
     margin-top: 0.5rem;
     display: none;
+    white-space: pre-line;
 }
 
 .jbo-hint-content:not(:empty) {
