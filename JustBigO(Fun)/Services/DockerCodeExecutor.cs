@@ -40,43 +40,13 @@ public class DockerCodeExecutor : ICodeExecutor
         if (Directory.Exists(workDir)) Directory.Delete(workDir, true);
         Directory.CreateDirectory(workDir);
 
+        var sw = Stopwatch.StartNew();
         try
         {
-            // 1. Prepare solution files and Compile
-            var compileResult = await PrepareAndCompileAsync(submission, workDir);
-            if (!compileResult.Success)
-            {
-                submission.Status = SubmissionStatus.CompilationError;
-                submission.ErrorMessage = compileResult.Error;
-                await db.SaveChangesAsync();
-                return;
-            }
-
-            // 2. Run Test Cases
-            var results = new List<TestCaseResult>();
-            foreach (var test in submission.Problem.Tests.OrderBy(t => t.OrderIndex))
-            {
-                var testResult = await RunTestCaseAsync(submission, test, workDir);
-                results.Add(testResult);
-                
-                // Optional: Stop on first critical error (TLE, MLE, RE)
-                if (testResult.Status != SubmissionStatus.Accepted && testResult.Status != SubmissionStatus.WrongAnswer)
-                {
-                    // But for now, let's continue to get full results
-                }
-            }
-
-            submission.ResultsJson = JsonSerializer.Serialize(results, JsonOptions);
-            
-            // 3. Aggregate Status
-            submission.Status = AggregateStatus(results);
-            
-            // If any test has a specific error, we might want to put it in ErrorMessage if not already set
-            if (submission.Status != SubmissionStatus.Accepted && submission.Status != SubmissionStatus.WrongAnswer)
-            {
-                var firstError = results.FirstOrDefault(r => r.Status == submission.Status);
-                submission.ErrorMessage = firstError?.Error;
-            }
+            var (status, resultsJson, errorMessage) = await EvaluateInWorkDirAsync(submission, workDir);
+            submission.ResultsJson = resultsJson;
+            submission.Status = status;
+            submission.ErrorMessage = errorMessage;
         }
         catch (Exception ex)
         {
@@ -86,9 +56,79 @@ public class DockerCodeExecutor : ICodeExecutor
         }
         finally
         {
+            sw.Stop();
+            submission.ExecutionTimeMs = sw.Elapsed.TotalMilliseconds;
             try { Directory.Delete(workDir, true); } catch { }
             await db.SaveChangesAsync();
         }
+    }
+
+    public async Task<(SubmissionStatus Status, string ResultsJson, string? ErrorMessage)> EvaluateCodeAsync(
+        int problemId,
+        string sourceCode,
+        string language,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var problem = await db.Problems
+            .Include(p => p.Tests)
+            .FirstOrDefaultAsync(p => p.Id == problemId, cancellationToken);
+
+        if (problem == null)
+            return (SubmissionStatus.SystemError, "[]", "Problem not found.");
+
+        var submission = new Submission
+        {
+            ProblemId = problemId,
+            Problem = problem,
+            SourceCode = sourceCode,
+            Language = language
+        };
+
+        var workDir = Path.Combine(Path.GetTempPath(), "justbigo-eval", Guid.NewGuid().ToString("N"));
+        if (Directory.Exists(workDir)) Directory.Delete(workDir, true);
+        Directory.CreateDirectory(workDir);
+
+        try
+        {
+            return await EvaluateInWorkDirAsync(submission, workDir);
+        }
+        finally
+        {
+            try { Directory.Delete(workDir, true); } catch { }
+        }
+    }
+
+    private async Task<(SubmissionStatus Status, string ResultsJson, string? ErrorMessage)> EvaluateInWorkDirAsync(
+        Submission submission,
+        string workDir)
+    {
+        var compileResult = await PrepareAndCompileAsync(submission, workDir);
+        if (!compileResult.Success)
+        {
+            return (SubmissionStatus.CompilationError, "[]", compileResult.Error);
+        }
+
+        var results = new List<TestCaseResult>();
+        foreach (var test in submission.Problem.Tests.OrderBy(t => t.OrderIndex))
+        {
+            var testResult = await RunTestCaseAsync(submission, test, workDir);
+            results.Add(testResult);
+        }
+
+        var resultsJson = JsonSerializer.Serialize(results, JsonOptions);
+        var status = AggregateStatus(results);
+
+        string? errorMessage = null;
+        if (status != SubmissionStatus.Accepted && status != SubmissionStatus.WrongAnswer)
+        {
+            var firstError = results.FirstOrDefault(r => r.Status == status);
+            errorMessage = firstError?.Error;
+        }
+
+        return (status, resultsJson, errorMessage);
     }
 
     private SubmissionStatus AggregateStatus(List<TestCaseResult> results)

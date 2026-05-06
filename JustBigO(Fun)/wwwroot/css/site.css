@@ -580,6 +580,8 @@ body {
 
 .jbo-editor-toolbar {
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     justify-content: space-between;
     align-items: center;
     background: rgba(15,23,42,0.96);

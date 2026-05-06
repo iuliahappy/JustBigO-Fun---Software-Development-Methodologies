@@ -184,6 +184,36 @@ namespace JustBigO_Fun_.Controllers
         }
 
         [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> CompleteCurrentCode(
+            [FromBody] SubmissionViewModel model,
+            [FromServices] ICurrentCodeCompletionService completionService,
+            CancellationToken cancellationToken)
+        {
+            if (model.ProblemId <= 0)
+                return BadRequest("Invalid ProblemId.");
+            if (string.IsNullOrWhiteSpace(model.SourceCode))
+                return BadRequest("Source code is empty.");
+
+            var lang = string.IsNullOrWhiteSpace(model.Language) ? "python" : model.Language;
+            var result = await completionService.CompleteAsync(
+                model.ProblemId,
+                model.SourceCode,
+                lang,
+                cancellationToken);
+
+            return Json(new
+            {
+                code = result.Code,
+                approachSummary = result.ApproachSummary,
+                testsPassed = result.TestsPassed,
+                status = result.LastStatus.ToString(),
+                results = result.ResultsJson,
+                message = result.Message
+            });
+        }
+
+        [HttpPost]
         public async Task<IActionResult> SubmitSolution(
             [FromBody] SubmissionViewModel model,
             [FromServices] ICodeExecutor codeExecutor,
