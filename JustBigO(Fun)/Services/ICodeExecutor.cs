@@ -14,4 +14,6 @@ public interface ICodeExecutor
         string sourceCode,
         string language,
         CancellationToken cancellationToken = default);
+
+    Task<(bool IsSuccess, string ErrorMessage)> TestRawCodeAsync(string sourceCode, string language);
 }
