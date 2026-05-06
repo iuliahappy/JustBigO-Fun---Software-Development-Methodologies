@@ -5,8 +5,7 @@
     var codeTemplatesJson = System.Text.Json.JsonSerializer.Serialize(Model?.GetCodeTemplates() ?? new Dictionary<string, string>());
 }
 
-<div class="jbo-workspace">
-
+<div class="d-flex w-100 h-100">
     <div class="jbo-workspace-panel jbo-problem-panel">
         <div class="jbo-panel-header">
             <h1 class="jbo-problem-title">@(Model?.OrderIndex). @(Model?.Title)</h1>
@@ -32,24 +31,39 @@
         </div>
     </div>
 
-    <div class="jbo-workspace-right">
+    <div class="jbo-workspace-right w-100 d-flex flex-column">
 
-        <div class="jbo-editor-toolbar">
-            <select class="jbo-language-select" id="languageSelect">
+        <div class="jbo-editor-toolbar d-flex align-items-center gap-3 p-2">
+            <select class="jbo-language-select form-select form-select-sm w-auto" id="languageSelect">
                 <option value="python">Python</option>
                 <option value="java">Java</option>
                 <option value="cpp">C++</option>
             </select>
 
-            <div class="jbo-complexity-badges">
+            <button id="btnTranspile" class="btn btn-sm btn-outline-info d-flex align-items-center gap-1">
+                <i class="bi bi-robot"></i> Transpile to Selected
+            </button>
+
+            <div class="jbo-complexity-badges ms-auto">
                 <span class="jbo-badge-soft" id="timeComplexity" title="Estimated time">⏱ O(?)</span>
                 <span class="jbo-badge-soft" id="spaceComplexity" title="Estimated space">💾 O(?)</span>
             </div>
         </div>
 
-        <div id="monaco-editor-container" class="jbo-monaco-container" data-problem-id="@(Model?.Id)"></div>
+        <div id="aiLoadingIndicator" class="alert alert-info py-2 mb-2 mx-2 d-flex align-items-center" style="display: none !important; font-size: 0.9rem;">
+            <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+            <strong>AI is transpiling the code...</strong>
+        </div>
 
-        <div class="jbo-console-panel">
+        <!-- Side-by-Side Editor Layout -->
+        <div class="d-flex gap-2 w-100 px-2" style="min-height: 400px; flex: 1;">
+            <!-- User's Editor (Left) -->
+            <div id="monaco-editor-container" class="jbo-monaco-container w-100" data-problem-id="@(Model?.Id)"></div>
+            <!-- AI's Editor (Right) -->
+            <div id="ai-editor-container" class="jbo-monaco-container w-50 border-start border-info" style="display: none;"></div>
+        </div>
+
+        <div class="jbo-console-panel mt-2">
             <div class="jbo-console-header">
                 <span>Console Output</span>
                 <div class="jbo-console-actions">
@@ -67,216 +81,293 @@
 </div>
 
 @section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
-
     <script>
         const codeTemplates = @Html.Raw(codeTemplatesJson) || {};
 
         // Monaco Editor init
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
         require(['vs/editor/editor.main'], function () {
-        const defaultCode = '// Write your solution here';
-        const initialLang = 'python';
-        const initialCode = codeTemplates[initialLang] || codeTemplates['java'] || codeTemplates['cpp'] || Object.values(codeTemplates)[0] || defaultCode;
+            const defaultCode = '// Write your solution here';
+            const initialLang = 'python';
+            const initialCode = codeTemplates[initialLang] || codeTemplates['java'] || codeTemplates['cpp'] || Object.values(codeTemplates)[0] || defaultCode;
 
-        window.editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
-        value: initialCode,
-        language: initialLang,
-        theme: 'vs-dark',
-        automaticLayout: true,
-        minimap: { enabled: false },
-        fontSize: 14,
-        fontFamily: '"JetBrains Mono", Consolas, monospace',
-        scrollBeyondLastLine: false,
-        roundedSelection: true
-        });
+            // User Editor
+            window.editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
+                value: initialCode,
+                language: initialLang,
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontSize: 14,
+                fontFamily: '"JetBrains Mono", Consolas, monospace',
+                scrollBeyondLastLine: false,
+                roundedSelection: true
+            });
 
-        document.getElementById('languageSelect').addEventListener('change', function(e) {
-        const newLang = e.target.value;
-        const template = codeTemplates[newLang] || defaultCode;
-        window.editor.setValue(template);
-        monaco.editor.setModelLanguage(window.editor.getModel(), newLang);
-        });
+            // AI Editor
+            window.aiEditor = monaco.editor.create(document.getElementById('ai-editor-container'), {
+                value: '// AI translation will appear here...',
+                language: initialLang,
+                theme: 'vs-dark',
+                readOnly: true,
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontSize: 14,
+                fontFamily: '"JetBrains Mono", Consolas, monospace',
+                scrollBeyondLastLine: false,
+                roundedSelection: true
+            });
 
-        document.getElementById('btnSubmit').addEventListener('click', async function() {
-        const sourceCode = window.editor.getValue();
-        const language = document.getElementById('languageSelect').value;
-        const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
-        const consoleOutput = document.getElementById('consoleOutput');
-        const btnSubmit = document.getElementById('btnSubmit');
+            // SignalR Connection
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/translationHub")
+                .withServerTimeout(300000) // NEW: Wait up to 5 minutes (300,000 ms)
+                .build();
 
-        consoleOutput.innerHTML = "Submitting...";
-        btnSubmit.disabled = true;
+            connection.on("ReceiveCodeChunk", function (chunk) {
+                let currentCode = window.aiEditor.getValue();
+                let newCode = currentCode + chunk;
 
-        // Reset complexity badges in the UI
-        const tcBadge = document.getElementById('timeComplexity');
-        const scBadge = document.getElementById('spaceComplexity');
-        tcBadge.innerText = "⏱ O(?)";
-        scBadge.innerText = "💾 O(?)";
-        tcBadge.className = "jbo-badge-soft";
-        scBadge.className = "jbo-badge-soft";
+                // Scrub out any markdown blocks
+                newCode = newCode.replace(/```[a-zA-Z]*\n?/g, "").replace(/```/g, "");
 
-        try {
-        // 1. Call the submission executor (Docker tests)
-        const response = await fetch('/api/submission', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
-        });
+                window.aiEditor.setValue(newCode);
+                window.aiEditor.revealLine(window.aiEditor.getModel().getLineCount());
+            });
 
-        if (response.redirected && response.url.includes('Login')) {
-        window.location.href = response.url;
-        return;
-        }
+            connection.start().catch(err => console.error("SignalR Error: ", err));
 
-        if (!response.ok) throw new Error(await response.text());
+            let sourceLang = initialLang;
 
-        const data = await response.json();
+            // Handle Language Change for User Editor
+            document.getElementById('languageSelect').addEventListener('change', function(e) {
+                sourceLang = e.target.value;
+                monaco.editor.setModelLanguage(window.editor.getModel(), sourceLang);
+            });
 
-        // 2. Start polling submission status
-        pollStatus(data.submissionId);
-        } catch (err) {
-        consoleOutput.innerHTML = "Error: " + err.message;
-        btnSubmit.disabled = false;
-        }
-        });
+            // Handle Transpile Button
+            document.getElementById('btnTranspile').addEventListener('click', async function() {
+                const targetLang = document.getElementById('languageSelect').value;
+                const sourceCode = window.editor.getValue();
+                const loadingBar = document.getElementById('aiLoadingIndicator');
+                const aiContainer = document.getElementById('ai-editor-container');
+                const userContainer = document.getElementById('monaco-editor-container');
 
-        document.getElementById('askHintBtn').addEventListener('click', async function() {
-        const hintContainer = document.getElementById('hintContainer');
-        const askHintBtn = document.getElementById('askHintBtn');
-        const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
-        const sourceCode = window.editor ? window.editor.getValue() : '';
-        const language = document.getElementById('languageSelect').value;
+                // Reveal AI editor and adjust widths
+                aiContainer.style.display = 'block';
+                userContainer.classList.remove('w-100');
+                userContainer.classList.add('w-50');
 
-        askHintBtn.disabled = true;
-        hintContainer.textContent = "Generating hint...";
+                loadingBar.style.setProperty('display', 'flex', 'important');
 
-        try {
-        const response = await fetch('/Home/GetHint', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-        problemId: parseInt(problemId),
-        sourceCode: sourceCode,
-        language: language
-        })
-        });
+                monaco.editor.setModelLanguage(window.aiEditor.getModel(), targetLang);
+                window.aiEditor.setValue("");
 
-        if (response.redirected && response.url.includes('Login') || response.status === 401) {
-        window.location.href = '/Identity/Account/Login';
-        return;
-        }
+                try {
+                    await connection.invoke("TranslateCode", sourceCode, sourceLang, targetLang);
+                } catch (err) {
+                    console.error("Translation Error: ", err);
+                    window.aiEditor.setValue("// Error translating code.");
+                } finally {
+                    loadingBar.style.setProperty('display', 'none', 'important');
+                }
+            });
 
-        if (!response.ok) throw new Error(await response.text());
+            // Ask for Hint Button Logic
+            document.getElementById('askHintBtn').addEventListener('click', async function() {
+                const hintContainer = document.getElementById('hintContainer');
+                const askHintBtn = document.getElementById('askHintBtn');
+                const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
+                const sourceCode = window.editor ? window.editor.getValue() : '';
+                const language = document.getElementById('languageSelect').value;
 
-        const data = await response.json();
-        hintContainer.textContent = data.hint || "No hint was returned.";
-        } catch (err) {
-        hintContainer.textContent = "Error requesting hint: " + err.message;
-        } finally {
-        askHintBtn.disabled = false;
-        }
-        });
+                askHintBtn.disabled = true;
+                hintContainer.textContent = "Generating hint...";
 
-        async function pollStatus(id) {
-        const consoleOutput = document.getElementById('consoleOutput');
-        const btnSubmit = document.getElementById('btnSubmit');
+                try {
+                    const response = await fetch('/Home/GetHint', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            problemId: parseInt(problemId),
+                            sourceCode: sourceCode,
+                            language: language
+                        })
+                    });
 
-        const interval = setInterval(async () => {
-        try {
-        const response = await fetch('/api/submission/' + id);
+                    if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
+                        window.location.href = '/Identity/Account/Login';
+                        return;
+                    }
 
-        if (response.redirected && response.url.includes('Login') || response.status === 401) {
-            clearInterval(interval);
-            // Clean redirect to login
-            window.location.href = '/Identity/Account/Login';
-            return;
-        }
+                    if (!response.ok) throw new Error(await response.text());
 
-        const data = await response.json();
-        consoleOutput.innerHTML = "Status: " + data.status + "...";
+                    const data = await response.json();
+                    hintContainer.textContent = data.hint || "No hint was returned.";
+                } catch (err) {
+                    hintContainer.textContent = "Error requesting hint: " + err.message;
+                } finally {
+                    askHintBtn.disabled = false;
+                }
+            });
 
-        if (data.status !== 'Pending' && data.status !== 'Running' && data.status !== 'Compiling') {
-        clearInterval(interval);
-        displayResult(data);
-        btnSubmit.disabled = false;
-        }
-        } catch (err) {
-        clearInterval(interval);
-        consoleOutput.innerHTML = "Error polling: " + err.message;
-        btnSubmit.disabled = false;
-        }
-        }, 2000);
-        }
+            // Submit Button Logic
+            document.getElementById('btnSubmit').addEventListener('click', async function() {
+                const sourceCode = window.editor.getValue();
+                const language = document.getElementById('languageSelect').value;
+                const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
+                const consoleOutput = document.getElementById('consoleOutput');
+                const btnSubmit = document.getElementById('btnSubmit');
 
-        async function displayResult(data) {
-        const consoleOutput = document.getElementById('consoleOutput');
-        let html = `<div class="p-2">
-        <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">Submission: ${data.status}</h4>
-        <hr class="my-2 border-secondary"/>`;
+                consoleOutput.innerHTML = "Submitting...";
+                btnSubmit.disabled = true;
 
-        // --- ORIGINAL TEST DISPLAY ---
-        if (data.results) {
-        const results = JSON.parse(data.results);
-        results.forEach((r, idx) => {
-        const isOk = r.status === 'Accepted';
-        html += `
-        <div class="mb-4 p-2 border ${isOk ? 'border-success' : 'border-danger'} rounded bg-dark">
-        <div class="d-flex justify-content-between">
-        <strong>Test Case #${idx + 1}</strong>
-        <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
-        </div>
-        <div class="mt-2"><small class="text-muted">Input:</small><pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre></div>
-        <div class="mt-2"><small class="text-muted">Expected:</small><pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre></div>
-        <div class="mt-2"><small class="text-muted">Actual Output:</small><pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre></div>
-        ${r.error ? `<div class="mt-2"><small class="text-muted">Error:</small><pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre></div>` : ''}
-        </div>`;
-        });
-        } else if (data.errorMessage) {
-        html += `<div class="alert alert-danger">${data.errorMessage}</div>`;
-        }
-        html += `</div>`;
-        consoleOutput.innerHTML = html;
+                // Reset badges
+                const tcBadge = document.getElementById('timeComplexity');
+                const scBadge = document.getElementById('spaceComplexity');
+                tcBadge.innerText = "⏱ O(?)";
+                scBadge.innerText = "💾 O(?)";
+                tcBadge.className = "jbo-badge-soft";
+                scBadge.className = "jbo-badge-soft";
 
-        // --- NEW: Run AI analysis only when accepted ---
-        if (data.status === 'Accepted') {
-        const tcBadge = document.getElementById('timeComplexity');
-        const scBadge = document.getElementById('spaceComplexity');
+                try {
+                    const response = await fetch('/api/submission', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
+                    });
 
-        tcBadge.innerText = "⏱ Analyzing...";
-        scBadge.innerText = "💾 Analyzing...";
-        tcBadge.classList.add('text-warning');
-        scBadge.classList.add('text-warning');
+                    if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
+                        window.location.href = '/Identity/Account/Login';
+                        return;
+                    }
 
-        try {
-        const sourceCode = window.editor.getValue();
-        const aiResponse = await fetch('/Home/AnalyzeComplexity', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-        problemId: 0,
-        sourceCode: sourceCode,
-        language: document.getElementById('languageSelect').value
-        })
-        });
+                    if (!response.ok) throw new Error(await response.text());
 
-        if (aiResponse.ok) {
-        const aiData = await aiResponse.json();
-        tcBadge.innerText = `⏱ ${aiData.timeComplexity}`;
-        scBadge.innerText = `💾 ${aiData.spaceComplexity}`;
+                    const data = await response.json();
+                    pollStatus(data.submissionId);
+                } catch (err) {
+                    consoleOutput.innerHTML = "Error: " + err.message;
+                    btnSubmit.disabled = false;
+                }
+            });
 
-        tcBadge.classList.remove('text-warning');
-        scBadge.classList.remove('text-warning');
-        tcBadge.classList.add('text-success', 'fw-bold');
-        scBadge.classList.add('text-success', 'fw-bold');
-        }
-        } catch (e) {
-        console.error("AI agent error:", e);
-        tcBadge.innerText = "⏱ O(?)";
-        scBadge.innerText = "💾 O(?)";
-        }
-        }
-        }
+            // Poll Status Logic
+            async function pollStatus(id) {
+                const consoleOutput = document.getElementById('consoleOutput');
+                const btnSubmit = document.getElementById('btnSubmit');
+
+                const interval = setInterval(async () => {
+                    try {
+                        const response = await fetch('/api/submission/' + id);
+
+                        if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
+                            clearInterval(interval);
+                            window.location.href = '/Identity/Account/Login';
+                            return;
+                        }
+
+                        const data = await response.json();
+                        consoleOutput.innerHTML = "Status: " + data.status + "...";
+
+                        if (data.status !== 'Pending' && data.status !== 'Running' && data.status !== 'Compiling') {
+                            clearInterval(interval);
+                            displayResult(data);
+                            btnSubmit.disabled = false;
+                        }
+                    } catch (err) {
+                        clearInterval(interval);
+                        consoleOutput.innerHTML = "Error polling: " + err.message;
+                        btnSubmit.disabled = false;
+                    }
+                }, 2000);
+            }
+
+            // Display Results Logic
+            async function displayResult(data) {
+                const consoleOutput = document.getElementById('consoleOutput');
+                let html = `<div class="p-2">
+                <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">Submission: ${data.status}</h4>
+                <hr class="my-2 border-secondary"/>`;
+
+                if (data.results) {
+                    const results = JSON.parse(data.results);
+                    results.forEach((r, idx) => {
+                        const isOk = r.status === 'Accepted';
+                        html += `
+                        <div class="mb-4 p-2 border ${isOk ? 'border-success' : 'border-danger'} rounded bg-dark">
+                            <div class="d-flex justify-content-between">
+                                <strong>Test Case #${idx + 1}</strong>
+                                <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Input:</small>
+                                <pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Expected:</small>
+                                <pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Actual Output (stdout):</small>
+                                <pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre>
+                            </div>
+                            ${r.error ? `
+                            <div class="mt-2">
+                                <small class="text-muted">Error (stderr):</small>
+                                <pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre>
+                            </div>` : ''}
+                        </div>`;
+                    });
+                } else if (data.errorMessage) {
+                    html += `<div class="alert alert-danger">${data.errorMessage}</div>`;
+                }
+
+                html += `</div>`;
+                consoleOutput.innerHTML = html;
+
+                // AI Complexity Analysis
+                if (data.status === 'Accepted') {
+                    const tcBadge = document.getElementById('timeComplexity');
+                    const scBadge = document.getElementById('spaceComplexity');
+
+                    tcBadge.innerText = "⏱ Analyzing...";
+                    scBadge.innerText = "💾 Analyzing...";
+                    tcBadge.classList.add('text-warning');
+                    scBadge.classList.add('text-warning');
+
+                    try {
+                        const sourceCode = window.editor.getValue();
+                        const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
+                        const aiResponse = await fetch('/Home/AnalyzeComplexity', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                problemId: parseInt(problemId),
+                                sourceCode: sourceCode,
+                                language: document.getElementById('languageSelect').value
+                            })
+                        });
+
+                        if (aiResponse.ok) {
+                            const aiData = await aiResponse.json();
+                            tcBadge.innerText = `⏱ ${aiData.timeComplexity}`;
+                            scBadge.innerText = `💾 ${aiData.spaceComplexity}`;
+
+                            tcBadge.classList.remove('text-warning');
+                            scBadge.classList.remove('text-warning');
+                            tcBadge.classList.add('text-success', 'fw-bold');
+                            scBadge.classList.add('text-success', 'fw-bold');
+                        }
+                    } catch (e) {
+                        console.error("Eroare la Agentul AI:", e);
+                        tcBadge.innerText = "⏱ O(?)";
+                        scBadge.innerText = "💾 O(?)";
+                    }
+                }
+            }
         });
     </script>
 }
