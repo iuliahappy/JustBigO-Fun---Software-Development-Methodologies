@@ -17,7 +17,8 @@ namespace JustBigO_Fun_.Hubs
         {
             if (string.IsNullOrWhiteSpace(sourceCode)) return;
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            // Increased to 60s to allow multiple reflexion loops (AI gen + Docker test)
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
 
             try
             {
