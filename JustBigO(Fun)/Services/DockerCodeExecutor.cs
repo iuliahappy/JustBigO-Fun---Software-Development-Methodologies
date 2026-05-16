@@ -182,7 +182,8 @@ except Exception as e:
             await File.WriteAllTextAsync(Path.Combine(workDir, "driver.py"), driver, Utf8NoBom);
             
             // Step A: Statically check for syntax errors
-            var checkResult = await RunDockerCommandAsync(workDir, "python -m py_compile solution.py", "python", 10);
+            var checkArgs = BuildDockerArguments(workDir, "python -m py_compile solution.py", "python");
+            var checkResult = await RunDockerCommandAsync(checkArgs, 10);
             if (checkResult.ExitCode != 0)
             {
                 return (false, checkResult.Error);
@@ -226,7 +227,8 @@ int main() {{
             await File.WriteAllTextAsync(Path.Combine(workDir, "driver.cpp"), driver, Utf8NoBom);
             
             var compileCmd = "LC_ALL=C g++ -O3 -I/usr/include /app/driver.cpp -o /app/out";
-            var result = await RunDockerCommandAsync(workDir, compileCmd, "cpp", 30);
+            var compileArgs = BuildDockerArguments(workDir, compileCmd, "cpp");
+            var result = await RunDockerCommandAsync(compileArgs, 30);
             
             if (result.ExitCode != 0)
             {
@@ -266,7 +268,8 @@ public class Driver {{
             await File.WriteAllTextAsync(Path.Combine(workDir, "Driver.java"), driver, Utf8NoBom);
             
             var compileCmd = "javac /app/Solution.java /app/Driver.java";
-            var result = await RunDockerCommandAsync(workDir, compileCmd, "java", 30);
+            var compileArgs = BuildDockerArguments(workDir, compileCmd, "java");
+            var result = await RunDockerCommandAsync(compileArgs, 30);
             
             if (result.ExitCode != 0)
             {
@@ -296,42 +299,53 @@ public class Driver {{
         // Use 'timeout' command inside docker for better TLE control
         var timedCmd = $"timeout 5s {runCmd}";
 
-        var dockerResult = await RunDockerCommandAsync(workDir, timedCmd, lang, 7); // 7s total timeout for the process
+        var dockerArgs = BuildDockerArguments(workDir, timedCmd, lang);
+        var dockerResult = await RunDockerCommandAsync(dockerArgs, 7); // 7s total timeout for the process
 
-        if (dockerResult.ExitCode == 124) // timeout command exit code
+        MapDockerResultToStatus(result, dockerResult.ExitCode, dockerResult.Error, dockerResult.Output);
+
+        return result;
+    }
+
+    internal void MapDockerResultToStatus(TestCaseResult result, int exitCode, string error, string output)
+    {
+        if (exitCode == 124) // timeout command exit code
         {
             result.Status = SubmissionStatus.TimeLimitExceeded;
             result.Error = "Time Limit Exceeded (5s)";
             result.Output = ""; // Suppress output for TLE
         }
-        else if (dockerResult.ExitCode == 137) // OOM or killed
+        else if (exitCode == 137) // OOM or killed
         {
             result.Status = SubmissionStatus.MemoryLimitExceeded;
             result.Error = "Memory Limit Exceeded (256MB)";
             result.Output = ""; // Suppress output for MLE
         }
-        else if (dockerResult.ExitCode != 0)
+        else if (exitCode != 0)
         {
             result.Status = SubmissionStatus.RuntimeError;
-            result.Error = dockerResult.Error;
+            result.Error = error;
             result.Output = ""; // Suppress output for RE
         }
         else
         {
-            result.Output = dockerResult.Output.Trim();
+            result.Output = output.Trim();
             result.Status = IsMatch(result.Output, result.Expected) ? SubmissionStatus.Accepted : SubmissionStatus.WrongAnswer;
         }
-
-        return result;
     }
 
-    private async Task<(int ExitCode, string Output, string Error)> RunDockerCommandAsync(string workDir, string cmd, string lang, int timeoutSeconds)
+    internal string BuildDockerArguments(string workDir, string cmd, string lang)
     {
         var dockerWorkDir = workDir.Replace("\\", "/");
+        return $"run --rm --network none -m 256m --cpus=\"1.0\" -v \"{dockerWorkDir}:/app\" {GetDockerImage(lang)} sh -c \"cd /app && {cmd}\"";
+    }
+
+    private async Task<(int ExitCode, string Output, string Error)> RunDockerCommandAsync(string arguments, int timeoutSeconds)
+    {
         var psi = new ProcessStartInfo
         {
             FileName = "docker",
-            Arguments = $"run --rm --network none -m 256m --cpus=\"1.0\" -v \"{dockerWorkDir}:/app\" {GetDockerImage(lang)} sh -c \"cd /app && {cmd}\"",
+            Arguments = arguments,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -347,8 +361,6 @@ public class Driver {{
         if (await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(timeoutSeconds)), p.WaitForExitAsync()) == Task.Delay(TimeSpan.FromSeconds(timeoutSeconds)))
         {
             p.Kill(true);
-            // Try to kill the container if it's still running? 
-            // In a production system, we'd use --name and docker kill, but here we hope --rm and p.Kill(true) are enough.
             return (124, "", "Timed out waiting for Docker client");
         }
 
@@ -391,7 +403,8 @@ public class Driver {{
             }
 
             // Run it in the Sandbox with a 10-second timeout
-            var result = await RunDockerCommandAsync(workDir, cmd, language, 10);
+            var dockerArgs = BuildDockerArguments(workDir, cmd, language);
+            var result = await RunDockerCommandAsync(dockerArgs, 10);
 
             if (result.ExitCode != 0)
             {

@@ -1,0 +1,9 @@
+User Story:
+Ca sistem, îmi doresc să pot gestiona momentele în care agenții AI nu răspund în timp util, pentru a nu bloca platforma.
+
+Acceptance Criteria:
+
+Dacă timeout-ul (ex: 10 secunde) este depășit, frontend-ul afișează o eroare prietenoasă.
+
+Eșecul unui agent nu împiedică scrierea, compilarea și rularea codului în Docker.
+

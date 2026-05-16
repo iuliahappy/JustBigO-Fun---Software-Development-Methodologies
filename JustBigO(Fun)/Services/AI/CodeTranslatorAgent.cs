@@ -91,7 +91,7 @@ ABSOLUTE LAWS:
 
             for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                var aiResponse = await _kernel.InvokePromptAsync(currentPrompt, arguments, cancellationToken: CancellationToken.None);
+                var aiResponse = await _kernel.InvokePromptAsync(currentPrompt, arguments, cancellationToken: cancellationToken);
 
                 string draftedCode = aiResponse.ToString()
                                     .Replace("```" + targetLang, "")

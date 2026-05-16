@@ -5,8 +5,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.SemanticKernel;
 using JustBigO_Fun_.Hubs;
+using System.Runtime.CompilerServices;
 
-
+[assembly: InternalsVisibleTo("JustBigO(Fun).Tests")]
 
 var builder = WebApplication.CreateBuilder(args);
 
