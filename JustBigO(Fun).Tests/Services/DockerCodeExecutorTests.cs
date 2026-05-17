@@ -76,7 +76,7 @@ namespace JustBigO_Fun_.Tests.Services
             string args = _executor.BuildDockerArguments(workDir, cmd, lang);
 
             // Assert
-            Assert.Contains("-m 256m", args); // Memory limit
+            Assert.Contains("-m 512m", args); // Memory limit
             Assert.Contains("--cpus=\"1.0\"", args); // CPU limit
             Assert.Contains("--network none", args); // No network for security
             Assert.Contains("C:/temp/test", args); // Path sanitization check

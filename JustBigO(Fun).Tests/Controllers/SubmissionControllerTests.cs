@@ -29,6 +29,11 @@ namespace JustBigO_Fun_.Tests.Controllers
             // Arrange
             using var db = new ApplicationDbContext(_options);
             db.Problems.Add(new Problem { Id = 1, Title = "Test", Slug = "test" });
+            
+            // Add mock user to prevent 401 from userExists check
+            var userId = "user-123";
+            db.Users.Add(new Microsoft.AspNetCore.Identity.IdentityUser { Id = userId, UserName = "testuser", Email = "test@test.com" });
+            
             db.SaveChanges();
 
             var mockExecutor = new Mock<ICodeExecutor>();
@@ -36,7 +41,7 @@ namespace JustBigO_Fun_.Tests.Controllers
 
             // Mocking User Identity
             var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[] {
-                new Claim(ClaimTypes.NameIdentifier, "user-123")
+                new Claim(ClaimTypes.NameIdentifier, userId)
             }, "mock"));
 
             controller.ControllerContext = new ControllerContext()
