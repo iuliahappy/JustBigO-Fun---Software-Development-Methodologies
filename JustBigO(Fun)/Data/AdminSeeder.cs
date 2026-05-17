@@ -24,7 +24,7 @@ public static class AdminSeeder
 
         var adminPassword = configuration[AdminPasswordConfigurationKey]?.Trim();
         if (string.IsNullOrEmpty(adminPassword))
-            return;
+            adminPassword = "Admin123!"; // Fallback default for development
 
         var admin = await userManager.FindByEmailAsync(AdminEmail);
         if (admin == null)

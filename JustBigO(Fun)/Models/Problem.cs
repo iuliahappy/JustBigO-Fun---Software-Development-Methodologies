@@ -30,6 +30,12 @@ public class Problem
     /// <summary>JSON: { "python": "...", "java": "...", "cpp": "..." }</summary>
     public string CodeTemplatesJson { get; set; } = "{}";
 
+    /// <summary>
+    /// JSON defining parameters and return type.
+    /// Example: { "parameters": [{ "name": "nums", "type": "int[]" }, { "name": "target", "type": "int" }], "returnType": "int[]" }
+    /// </summary>
+    public string? SignatureJson { get; set; }
+
     /// <summary>The name of the function/method to call (e.g. "two_sum").</summary>
     [MaxLength(100)]
     public string? MethodName { get; set; }

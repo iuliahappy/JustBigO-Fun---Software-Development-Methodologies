@@ -39,6 +39,19 @@ public class SubmissionController : ControllerBase
             return NotFound("Problem not found.");
         }
 
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized("User ID not found in claims. Please log in again.");
+        }
+
+        // Check if user exists in DB to prevent FK conflict from orphaned cookies
+        var userExists = await _db.Users.AnyAsync(u => u.Id == userId);
+        if (!userExists)
+        {
+            return Unauthorized("Your session is invalid for this database. Please log out and log in again.");
+        }
+
         var submission = new Submission
         {
             ProblemId = request.ProblemId,
@@ -46,7 +59,8 @@ public class SubmissionController : ControllerBase
             Language = request.Language,
             Status = SubmissionStatus.Pending,
             CreatedAt = DateTime.UtcNow,
-            UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) // Va prelua automat ID-ul curent
+            UserId = userId,
+            ResultsJson = "[]"
         };
 
         _db.Submissions.Add(submission);
@@ -75,6 +89,8 @@ public class SubmissionController : ControllerBase
             status = submission.Status.ToString(),
             results = submission.ResultsJson,
             executionTimeMs = submission.ExecutionTimeMs,
+            userTimeMs = submission.UserTimeMs,
+            peakMemoryKb = submission.PeakMemoryKb,
             errorMessage = submission.ErrorMessage,
             sourceCode = submission.SourceCode,
             problemMethodName = submission.Problem?.MethodName

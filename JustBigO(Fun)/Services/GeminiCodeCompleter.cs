@@ -61,8 +61,12 @@ public class GeminiCodeCompleter : ICodeCompleter
             ```
 
             Output requirements:
+            - IMPORTANT: The platform uses a Standard IO model (competitive programming style like Codeforces/pbinfo).
+            - The code MUST include a `main` function/method.
+            - It MUST READ inputs from standard input (`stdin`) and PRINT outputs to standard output (`stdout`).
+            - Do NOT just return a value from a function; the judge reads from `stdout`.
+            - Follow the Input and Output formats described in the problem statement exactly.
             - Return ONE complete solution file for {language} that compiles and satisfies the problem's public tests.
-            - Prefer correctness over asymptotic optimality (O(n^2) is acceptable if it matches the user's approach).
             - Output ONLY one markdown fenced code block using an appropriate language tag (python, java, or cpp). No prose outside the fence.
             """;
 

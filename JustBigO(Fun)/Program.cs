@@ -86,9 +86,9 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
 
     // Decomenteaza aceste linii daca ai nevoie sa populezi din nou baza de date
-    // await ProblemSeeder.SeedAsync(db);
+    await ProblemSeeder.SeedAsync(db);
     // Admin password: set User Secret Seeding:AdminPassword (see AdminSeeder.AdminPasswordConfigurationKey)
-    // await AdminSeeder.SeedAsync(roleManager, userManager, app.Configuration);
+    await AdminSeeder.SeedAsync(roleManager, userManager, app.Configuration);
 }
 
 // Configure the HTTP request pipeline.

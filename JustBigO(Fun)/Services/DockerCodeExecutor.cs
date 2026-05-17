@@ -43,10 +43,12 @@ public class DockerCodeExecutor : ICodeExecutor
         var sw = Stopwatch.StartNew();
         try
         {
-            var (status, resultsJson, errorMessage) = await EvaluateInWorkDirAsync(submission, workDir);
+            var (status, resultsJson, errorMessage, userTime, peakMemory) = await EvaluateInWorkDirAsync(submission, workDir);
             submission.ResultsJson = resultsJson;
             submission.Status = status;
             submission.ErrorMessage = errorMessage;
+            submission.UserTimeMs = userTime;
+            submission.PeakMemoryKb = peakMemory;
         }
         catch (Exception ex)
         {
@@ -93,7 +95,8 @@ public class DockerCodeExecutor : ICodeExecutor
 
         try
         {
-            return await EvaluateInWorkDirAsync(submission, workDir);
+            var res = await EvaluateInWorkDirAsync(submission, workDir);
+            return (res.Status, res.ResultsJson, res.ErrorMessage);
         }
         finally
         {
@@ -101,14 +104,14 @@ public class DockerCodeExecutor : ICodeExecutor
         }
     }
 
-    private async Task<(SubmissionStatus Status, string ResultsJson, string? ErrorMessage)> EvaluateInWorkDirAsync(
+    private async Task<(SubmissionStatus Status, string ResultsJson, string? ErrorMessage, double UserTime, double PeakMemory)> EvaluateInWorkDirAsync(
         Submission submission,
         string workDir)
     {
         var compileResult = await PrepareAndCompileAsync(submission, workDir);
         if (!compileResult.Success)
         {
-            return (SubmissionStatus.CompilationError, "[]", compileResult.Error);
+            return (SubmissionStatus.CompilationError, "[]", compileResult.Error, 0, 0);
         }
 
         var results = new List<TestCaseResult>();
@@ -128,7 +131,10 @@ public class DockerCodeExecutor : ICodeExecutor
             errorMessage = firstError?.Error;
         }
 
-        return (status, resultsJson, errorMessage);
+        double maxMemory = results.Any() ? results.Max(r => r.PeakMemoryKb) : 0;
+        double maxTime = results.Any() ? results.Max(r => r.UserTimeMs) : 0;
+
+        return (status, resultsJson, errorMessage, maxTime, maxMemory);
     }
 
     private SubmissionStatus AggregateStatus(List<TestCaseResult> results)
@@ -156,124 +162,55 @@ public class DockerCodeExecutor : ICodeExecutor
     private async Task<(bool Success, string? Error)> PrepareAndCompileAsync(Submission submission, string workDir)
     {
         var lang = submission.Language.ToLower();
-        var snakeMethod = submission.Problem.MethodName ?? "solve";
-        var camelMethod = ToCamelCase(snakeMethod);
 
         if (lang == "python")
         {
             await File.WriteAllTextAsync(Path.Combine(workDir, "solution.py"), submission.SourceCode, Utf8NoBom);
-            var driver = $@"
-import json
-import sys
-import solution
-try:
-    with open('/app/input.json', 'r') as f: data = json.load(f)
-    func = getattr(solution, '{snakeMethod}', getattr(solution, '{camelMethod}', None))
-    if func is None:
-        print(f'Error: Method {snakeMethod} or {camelMethod} not found', file=sys.stderr)
-        sys.exit(1)
-    res = func(**data) if isinstance(data, dict) else func(data)
-    print(json.dumps(res))
-except Exception as e:
-    import traceback
-    traceback.print_exc(file=sys.stderr)
-    sys.exit(1)
-";
-            await File.WriteAllTextAsync(Path.Combine(workDir, "driver.py"), driver, Utf8NoBom);
-            
-            // Step A: Statically check for syntax errors
             var checkArgs = BuildDockerArguments(workDir, "python -m py_compile solution.py", "python");
             var checkResult = await RunDockerCommandAsync(checkArgs, 10);
             if (checkResult.ExitCode != 0)
             {
-                return (false, checkResult.Error);
+                var combinedError = string.Join("\n", new[] { checkResult.Error, checkResult.Output }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                return (false, combinedError);
             }
-            
             return (true, null);
         }
         else if (lang == "cpp")
         {
             await File.WriteAllTextAsync(Path.Combine(workDir, "solution.cpp"), submission.SourceCode, Utf8NoBom);
-            var driver = $@"
-#include <iostream>
-#include <vector>
-#include <string>
-#include <fstream>
-#include <nlohmann/json.hpp>
-#include ""solution.cpp""
-
-using json = nlohmann::json;
-
-int main() {{
-    try {{
-        Solution sol;
-        std::ifstream f(""/app/input.json"");
-        json data = json::parse(f);
-        
-        // This is still hardcoded for Two Sum prototype, but let's keep it for now
-        // A real system would generate the driver based on problem metadata
-        std::vector<int> nums = data[""nums""].get<std::vector<int>>();
-        int target = data[""target""].get<int>();
-        
-        std::vector<int> res = sol.{camelMethod}(nums, target);
-        
-        std::cout << json(res).dump() << std::endl;
-    }} catch (const std::exception& e) {{
-        std::cerr << e.what() << std::endl;
-        return 1;
-    }}
-    return 0;
-}}";
-            await File.WriteAllTextAsync(Path.Combine(workDir, "driver.cpp"), driver, Utf8NoBom);
-            
-            var compileCmd = "LC_ALL=C g++ -O3 -I/usr/include /app/driver.cpp -o /app/out";
+            var compileCmd = "g++ -O3 solution.cpp -o out";
             var compileArgs = BuildDockerArguments(workDir, compileCmd, "cpp");
             var result = await RunDockerCommandAsync(compileArgs, 30);
             
             if (result.ExitCode != 0)
             {
-                return (false, result.Error);
+                var combinedError = string.Join("\n", new[] { result.Error, result.Output }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                if (string.IsNullOrWhiteSpace(combinedError))
+                {
+                    if (result.ExitCode == 137) combinedError = "Compilation failed: Memory limit exceeded (512MB).";
+                    else combinedError = $"G++ exited with code {result.ExitCode}";
+                }
+                return (false, combinedError);
             }
             return (true, null);
         }
         else if (lang == "java")
         {
-            await File.WriteAllTextAsync(Path.Combine(workDir, "Solution.java"), submission.SourceCode, Utf8NoBom);
-            var driver = $@"
-import java.util.*;
-import java.io.*;
-import java.nio.file.*;
-
-public class Driver {{
-    public static void main(String[] args) throws Exception {{
-        try {{
-            String content = new String(Files.readAllBytes(Paths.get(""/app/input.json"")));
-            // Minimal manual parsing for prototype
-            int startBracket = content.indexOf(""["");
-            int endBracket = content.indexOf(""]"");
-            String numsStr = content.substring(startBracket + 1, endBracket);
-            int target = Integer.parseInt(content.substring(content.lastIndexOf("":"") + 1).replace(""}}"", """").trim());
-            
-            int[] nums = Arrays.stream(numsStr.split("","")).map(String::trim).filter(s -> !s.isEmpty()).mapToInt(Integer::parseInt).toArray();
-            
-            Solution sol = new Solution();
-            int[] res = sol.{camelMethod}(nums, target);
-            System.out.println(Arrays.toString(res).replace("" "", """"));
-        }} catch (Exception e) {{
-            e.printStackTrace();
-            System.exit(1);
-        }}
-    }}
-}}";
-            await File.WriteAllTextAsync(Path.Combine(workDir, "Driver.java"), driver, Utf8NoBom);
-            
-            var compileCmd = "javac /app/Solution.java /app/Driver.java";
+            var className = GetJavaClassName(submission.SourceCode);
+            await File.WriteAllTextAsync(Path.Combine(workDir, $"{className}.java"), submission.SourceCode, Utf8NoBom);
+            var compileCmd = $"javac {className}.java";
             var compileArgs = BuildDockerArguments(workDir, compileCmd, "java");
             var result = await RunDockerCommandAsync(compileArgs, 30);
             
             if (result.ExitCode != 0)
             {
-                return (false, result.Error);
+                var combinedError = string.Join("\n", new[] { result.Error, result.Output }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                if (string.IsNullOrWhiteSpace(combinedError))
+                {
+                    if (result.ExitCode == 137) combinedError = "Compilation failed: Memory limit exceeded (512MB).";
+                    else combinedError = $"Javac exited with code {result.ExitCode}";
+                }
+                return (false, combinedError);
             }
             return (true, null);
         }
@@ -281,26 +218,33 @@ public class Driver {{
         return (false, $"Unsupported language: {lang}");
     }
 
+    private string GetJavaClassName(string sourceCode)
+    {
+        var match = Regex.Match(sourceCode, @"class\s+([A-Za-z0-9_]+)");
+        return match.Success ? match.Groups[1].Value : "Main";
+    }
+
     private async Task<TestCaseResult> RunTestCaseAsync(Submission submission, ProblemTest test, string workDir)
     {
         var result = new TestCaseResult { TestId = test.Id, Input = test.InputJson, Expected = test.ExpectedOutputJson.Trim() };
         var lang = submission.Language.ToLower();
         
-        await File.WriteAllTextAsync(Path.Combine(workDir, "input.json"), test.InputJson, Utf8NoBom);
+        await File.WriteAllTextAsync(Path.Combine(workDir, "input.txt"), test.InputJson, Utf8NoBom);
 
         string runCmd = lang switch
         {
-            "python" => "python /app/driver.py",
-            "cpp" => "/app/out",
-            "java" => "java -cp /app Driver",
+            "python" => "python /app/solution.py < /app/input.txt",
+            "cpp" => "/app/out < /app/input.txt",
+            "java" => $"java -cp /app {GetJavaClassName(submission.SourceCode)} < /app/input.txt",
             _ => throw new Exception("Unsupported language")
         };
 
-        // Use 'timeout' command inside docker for better TLE control
-        var timedCmd = $"timeout 5s {runCmd}";
+        // Use 'time -v' to capture resource usage.
+        // Wrap 'timeout' to ensure it doesn't run forever.
+        var timedCmd = $"/usr/bin/time -v timeout 5s sh -c \"{runCmd}\"";
 
         var dockerArgs = BuildDockerArguments(workDir, timedCmd, lang);
-        var dockerResult = await RunDockerCommandAsync(dockerArgs, 7); // 7s total timeout for the process
+        var dockerResult = await RunDockerCommandAsync(dockerArgs, 10); 
 
         MapDockerResultToStatus(result, dockerResult.ExitCode, dockerResult.Error, dockerResult.Output);
 
@@ -309,23 +253,30 @@ public class Driver {{
 
     internal void MapDockerResultToStatus(TestCaseResult result, int exitCode, string error, string output)
     {
+        // Parse metrics from stderr (where time -v outputs)
+        var userTimeMatch = Regex.Match(error, @"User time \(seconds\):\s+([0-9.]+)");
+        var memoryMatch = Regex.Match(error, @"Maximum resident set size \(kbytes\):\s+(\d+)");
+
+        if (userTimeMatch.Success) result.UserTimeMs = double.Parse(userTimeMatch.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) * 1000;     
+        if (memoryMatch.Success) result.PeakMemoryKb = double.Parse(memoryMatch.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
         if (exitCode == 124) // timeout command exit code
         {
             result.Status = SubmissionStatus.TimeLimitExceeded;
             result.Error = "Time Limit Exceeded (5s)";
-            result.Output = ""; // Suppress output for TLE
+            result.Output = ""; 
         }
-        else if (exitCode == 137) // OOM or killed
+        else if (exitCode == 137 || error.Contains("Memory limit exceeded")) 
         {
             result.Status = SubmissionStatus.MemoryLimitExceeded;
-            result.Error = "Memory Limit Exceeded (256MB)";
-            result.Output = ""; // Suppress output for MLE
+            result.Error = "Memory Limit Exceeded (512MB)";
+            result.Output = ""; 
         }
         else if (exitCode != 0)
         {
             result.Status = SubmissionStatus.RuntimeError;
-            result.Error = error;
-            result.Output = ""; // Suppress output for RE
+            // Clean up error message by removing time -v noise
+            result.Error = Regex.Replace(error, @"\tCommand being timed:.*", "", RegexOptions.Singleline).Trim();
+            result.Output = ""; 
         }
         else
         {
@@ -337,7 +288,9 @@ public class Driver {{
     internal string BuildDockerArguments(string workDir, string cmd, string lang)
     {
         var dockerWorkDir = workDir.Replace("\\", "/");
-        return $"run --rm --network none -m 256m --cpus=\"1.0\" -v \"{dockerWorkDir}:/app\" {GetDockerImage(lang)} sh -c \"cd /app && {cmd}\"";
+        // Escape quotes for the inner shell command
+        var escapedCmd = cmd.Replace("\"", "\\\"");
+        return $"run --rm --network none -m 512m --cpus=\"1.0\" -v \"{dockerWorkDir}:/app\" {GetDockerImage(lang)} sh -c \"cd /app && {escapedCmd}\"";
     }
 
     private async Task<(int ExitCode, string Output, string Error)> RunDockerCommandAsync(string arguments, int timeoutSeconds)
@@ -361,10 +314,16 @@ public class Driver {{
         if (await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(timeoutSeconds)), p.WaitForExitAsync()) == Task.Delay(TimeSpan.FromSeconds(timeoutSeconds)))
         {
             p.Kill(true);
+            _logger.LogWarning("Docker command timed out: {Args}", arguments);
             return (124, "", "Timed out waiting for Docker client");
         }
 
-        return (p.ExitCode, await outTask, await errTask);
+        var stdout = await outTask;
+        var stderr = await errTask;
+
+        _logger.LogInformation("Docker ExitCode: {ExitCode}\nSTDOUT: {Stdout}\nSTDERR: {Stderr}", p.ExitCode, stdout, stderr);
+
+        return (p.ExitCode, stdout, stderr);
     }
 
     // ADD THIS NEW METHOD FOR THE AI
@@ -441,4 +400,18 @@ public class TestCaseResult
     public string? Expected { get; set; }
     public string? Output { get; set; }
     public string? Error { get; set; }
+    public double UserTimeMs { get; set; }
+    public double PeakMemoryKb { get; set; }
+}
+
+public class ProblemSignature
+{
+    public List<Parameter> Parameters { get; set; } = new();
+    public string ReturnType { get; set; } = "void";
+}
+
+public class Parameter
+{
+    public string Name { get; set; } = "";
+    public string Type { get; set; } = "";
 }
