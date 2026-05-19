@@ -31,6 +31,7 @@ public class GeminiHintGenerator : IHintGenerator
             Return exactly one concise hint in English, max 2 short paragraphs.
             Do NOT provide full solution code.
             Keep the hint actionable and contextual.
+            Note: The platform uses a Standard IO model (Competitive Programming style). The user must READ from stdin and PRINT to stdout.
 
             Problem title: {problemTitle}
             Programming language: {language}

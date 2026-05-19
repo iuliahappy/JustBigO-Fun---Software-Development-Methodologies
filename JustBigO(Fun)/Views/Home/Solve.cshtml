@@ -399,8 +399,9 @@
                         body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
                     });
 
-                    if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
-                        window.location.href = '/Identity/Account/Login';
+                    // If unauthorized, redirect to login
+                    if (response.status === 401) {
+                        window.location.href = '/Identity/Account/Login?ReturnUrl=' + encodeURIComponent(window.location.pathname);
                         return;
                     }
 
@@ -449,40 +450,50 @@
             async function displayResult(data) {
                 const consoleOutput = document.getElementById('consoleOutput');
                 let html = `<div class="p-2">
-                <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'}">Submission: ${data.status}</h4>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'} mb-0">Submission: ${data.status}</h4>
+                    <div class="small text-muted">
+                        ${data.userTimeMs ? `<span>⏱ ${data.userTimeMs.toFixed(0)}ms</span>` : ''}
+                        ${data.peakMemoryKb ? `<span class="ms-2">💾 ${data.peakMemoryKb.toFixed(0)}KB</span>` : ''}
+                    </div>
+                </div>
                 <hr class="my-2 border-secondary"/>`;
+
+                if (data.errorMessage) {
+                    html += `<div class="alert alert-danger mb-3" style="white-space: pre-wrap; font-family: monospace;">${escapeHtml(data.errorMessage)}</div>`;
+                }
 
                 if (data.results) {
                     const results = JSON.parse(data.results);
-                    results.forEach((r, idx) => {
-                        const isOk = r.status === 'Accepted';
-                        html += `
-                        <div class="mb-4 p-2 border ${isOk ? 'border-success' : 'border-danger'} rounded bg-dark">
-                            <div class="d-flex justify-content-between">
-                                <strong>Test Case #${idx + 1}</strong>
-                                <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-muted">Input:</small>
-                                <pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre>
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-muted">Expected:</small>
-                                <pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre>
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-muted">Actual Output (stdout):</small>
-                                <pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre>
-                            </div>
-                            ${r.error ? `
-                            <div class="mt-2">
-                                <small class="text-muted">Error (stderr):</small>
-                                <pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre>
-                            </div>` : ''}
-                        </div>`;
-                    });
-                } else if (data.errorMessage) {
-                    html += `<div class="alert alert-danger">${data.errorMessage}</div>`;
+                    if (results && results.length > 0) {
+                        results.forEach((r, idx) => {
+                            const isOk = r.status === 'Accepted';
+                            html += `
+                            <div class="mb-4 p-2 border ${isOk ? 'border-success' : 'border-danger'} rounded bg-dark">
+                                <div class="d-flex justify-content-between">
+                                    <strong>Test Case #${idx + 1}</strong>
+                                    <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">Input:</small>
+                                    <pre class="m-0 p-1 bg-black text-info small">${r.input || 'N/A'}</pre>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">Expected:</small>
+                                    <pre class="m-0 p-1 bg-black text-success small">${r.expected || 'N/A'}</pre>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">Actual Output (stdout):</small>
+                                    <pre class="m-0 p-1 bg-black text-light small">${r.output || 'N/A'}</pre>
+                                </div>
+                                ${r.error ? `
+                                <div class="mt-2">
+                                    <small class="text-muted">Error (stderr):</small>
+                                    <pre class="m-0 p-1 bg-black text-danger small">${r.error}</pre>
+                                </div>` : ''}
+                            </div>`;
+                        });
+                    }
                 }
 
                 html += `</div>`;

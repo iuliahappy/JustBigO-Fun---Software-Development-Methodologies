@@ -36,8 +36,8 @@ To run this project locally, you must have the following installed and running:
    ```bash
    git clone [https://github.com/your-username/JustBigO-Fun.git](https://github.com/your-username/JustBigO-Fun.git)
    cd JustBigO-Fun
+   ```
    
-```
 
 2. **Build the Docker Execution Sandbox**:
    The application requires a specific Docker image to compile user and AI code. Ensure Docker Desktop is running, then execute this command in the project root:

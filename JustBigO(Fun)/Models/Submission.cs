@@ -38,6 +38,10 @@ public class Submission
 
     public double? ExecutionTimeMs { get; set; }
 
+    public double? UserTimeMs { get; set; }
+
+    public double? PeakMemoryKb { get; set; }
+
     public double? MemoryLimitKb { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
