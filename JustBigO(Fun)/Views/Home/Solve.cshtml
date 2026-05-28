@@ -32,15 +32,17 @@
 
         <div class="jbo-hint-section">
             <button type="button" class="btn jbo-btn-ghost w-100 d-flex justify-content-center align-items-center gap-2" id="btnImproveSolution" disabled
-                    title="Submit your code and wait until the judge reports Accepted on this page.">
+                title="Submit your code and wait until the judge reports Accepted on this page.">
                 <span>Improve solution</span>
                 <span class="badge bg-secondary">Mentor</span>
             </button>
             <p class="small text-muted mb-0 mt-1 px-1">Unlocked only after a successful <strong>Submit</strong> with status <strong>Accepted</strong> (Docker) on this page.</p>
+    
             <div id="improveSolutionPanel" class="jbo-improve-panel d-none mt-2" aria-readonly="true">
                 <div class="jbo-improve-readonly rounded p-2 small">
                     <div class="fw-semibold text-secondary mb-1">Code area to refactor</div>
                     <pre id="improveCodeBlock" class="jbo-improve-pre mb-3"></pre>
+                  
                     <div class="fw-semibold text-secondary mb-1">Optimal data structure / pattern</div>
                     <pre id="improveOptimalDs" class="jbo-improve-pre mb-3"></pre>
                     <div class="fw-semibold text-secondary mb-1">Refactoring steps (read-only)</div>
@@ -86,11 +88,8 @@
             <strong>AI is transpiling the code...</strong>
         </div>
 
-        <!-- Side-by-Side Editor Layout -->
         <div class="d-flex gap-2 w-100 px-2" style="min-height: 400px; flex: 1;">
-            <!-- User's Editor (Left) -->
             <div id="monaco-editor-container" class="jbo-monaco-container w-100" data-problem-id="@(Model?.Id)"></div>
-            <!-- AI's Editor (Right) -->
             <div id="ai-editor-container" class="jbo-monaco-container w-50 border-start border-info" style="display: none;"></div>
         </div>
 
@@ -124,6 +123,19 @@
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;');
+        }
+
+        // Functie ajutatoare pentru timeout Frontend (10 secunde)
+        async function fetchWithTimeout(resource, options = {}) {
+            const { timeout = 10000 } = options;
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            const response = await fetch(resource, {
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            return response;
         }
 
         // Monaco Editor init
@@ -177,16 +189,13 @@
             // SignalR Connection
             const connection = new signalR.HubConnectionBuilder()
                 .withUrl("/translationHub")
-                .withServerTimeout(300000) // NEW: Wait up to 5 minutes (300,000 ms)
+                .withServerTimeout(300000) 
                 .build();
 
             connection.on("ReceiveCodeChunk", function (chunk) {
                 let currentCode = window.aiEditor.getValue();
                 let newCode = currentCode + chunk;
-
-                // Scrub out any markdown blocks
                 newCode = newCode.replace(/```[a-zA-Z]*\n?/g, "").replace(/```/g, "");
-
                 window.aiEditor.setValue(newCode);
                 window.aiEditor.revealLine(window.aiEditor.getModel().getLineCount());
             });
@@ -198,58 +207,56 @@
             const targetSelect = document.getElementById('targetLanguageSelect');
             const btnTranspile = document.getElementById('btnTranspile');
 
-            // --- NEW: Update dynamic button text ---
             function updateTranspileButtonText() {
                 const srcText = sourceSelect.options[sourceSelect.selectedIndex].text;
                 const tgtText = targetSelect.options[targetSelect.selectedIndex].text;
                 btnTranspile.innerHTML = `<i class="bi bi-robot"></i> Convert from ${srcText} to ${tgtText}`;
             }
 
-            // Set initial text on page load
             updateTranspileButtonText();
-
-            // Handle Target Language Change
             targetSelect.addEventListener('change', updateTranspileButtonText);
 
-            // Handle Source Language Change for User Editor
             sourceSelect.addEventListener('change', function(e) {
                 sourceLang = e.target.value;
                 const template = codeTemplates[sourceLang] || defaultCode;
                 window.editor.setValue(template);
                 monaco.editor.setModelLanguage(window.editor.getModel(), sourceLang);
-                updateTranspileButtonText(); // Update the button text when source changes
+                updateTranspileButtonText();
             });
 
             // Handle Transpile Button
             btnTranspile.addEventListener('click', async function() {
-                const targetLang = targetSelect.value; // <-- NOW PROPERLY READS FROM THE TARGET DROPDOWN
+                const targetLang = targetSelect.value; 
                 const sourceCode = window.editor.getValue();
                 const loadingBar = document.getElementById('aiLoadingIndicator');
+                
                 const aiContainer = document.getElementById('ai-editor-container');
                 const userContainer = document.getElementById('monaco-editor-container');
 
-                // Reveal AI editor and adjust widths
                 aiContainer.style.display = 'block';
                 userContainer.classList.remove('w-100');
                 userContainer.classList.add('w-50');
 
                 loadingBar.style.setProperty('display', 'flex', 'important');
-
                 monaco.editor.setModelLanguage(window.aiEditor.getModel(), targetLang);
                 window.aiEditor.setValue("");
 
                 try {
-                    await connection.invoke("TranslateCode", sourceCode, sourceLang, targetLang);
+                    // Impunem limită la apelul SignalR
+                    const invokeTask = connection.invoke("TranslateCode", sourceCode, sourceLang, targetLang);
+                    const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000));
+                    await Promise.race([invokeTask, timeoutTask]);
                 } catch (err) {
                     console.error("Translation Error: ", err);
-                    window.aiEditor.setValue("// Error translating code.");
+                    if (err.message === "Timeout") {
+                        window.aiEditor.setValue("// Timeout: Agentul AI a depășit timpul de așteptare de 10s.\n// Platforma nu a fost blocată. Încearcă din nou mai târziu.");
+                    } else {
+                        window.aiEditor.setValue("// Error translating code.");
+                    }
                 } finally {
                     loadingBar.style.setProperty('display', 'none', 'important');
                 }
             });
-
-           
-             
 
             // Ask for Hint Button Logic
             document.getElementById('askHintBtn').addEventListener('click', async function() {
@@ -263,14 +270,15 @@
                 hintContainer.textContent = "Generating hint...";
 
                 try {
-                    const response = await fetch('/Home/GetHint', {
+                    const response = await fetchWithTimeout('/Home/GetHint', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             problemId: parseInt(problemId),
                             sourceCode: sourceCode,
                             language: language
-                        })
+                        }),
+                        timeout: 10000 // 10 secunde limită
                     });
 
                     if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
@@ -279,11 +287,14 @@
                     }
 
                     if (!response.ok) throw new Error(await response.text());
-
                     const data = await response.json();
                     hintContainer.textContent = data.hint || "No hint was returned.";
                 } catch (err) {
-                    hintContainer.textContent = "Error requesting hint: " + err.message;
+                    if (err.name === 'AbortError' || err.message === 'Timeout') {
+                        hintContainer.innerHTML = '<span class="text-danger">Timpul de așteptare a expirat (10s). Agentul AI este momentan suprasolicitat.</span>';
+                    } else {
+                        hintContainer.textContent = "Error requesting hint: " + err.message;
+                    }
                 } finally {
                     askHintBtn.disabled = false;
                 }
@@ -301,14 +312,15 @@
                 consoleOutput.innerHTML = '<div class="p-2 text-info">Analyzing your approach and generating a full solution…</div>';
 
                 try {
-                    const response = await fetch('/Home/CompleteCurrentCode', {
+                    const response = await fetchWithTimeout('/Home/CompleteCurrentCode', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             problemId: parseInt(problemId),
                             sourceCode: sourceCode,
                             language: language
-                        })
+                        }),
+                        timeout: 10000
                     });
 
                     if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
@@ -317,7 +329,7 @@
                     }
 
                     if (!response.ok) throw new Error(await response.text());
-
+                    
                     const data = await response.json();
                     if (window.editor && data.code) {
                         window.editor.setValue(data.code);
@@ -332,13 +344,17 @@
                     if (data.testsPassed) {
                         msg += '<div class="text-success"><strong>Tests:</strong> all passed (local check).</div>';
                     } else {
-                        msg += '<div class="text-warning"><strong>Tests:</strong> ' + (data.status || 'not all passed') + '. ';
+                        msg += '<div class="text-warning"><strong>Tests:</strong> ' + (data.status || 'not all passed') + '.<br/>';
                         msg += (data.message || 'Review the result or edit the code, then use Submit.') + '</div>';
                     }
                     msg += '</div>';
                     consoleOutput.innerHTML = msg;
                 } catch (err) {
-                    consoleOutput.innerHTML = '<div class="p-2 text-danger">Complete current code failed: ' + err.message + '</div>';
+                    if (err.name === 'AbortError' || err.message === 'Timeout') {
+                        consoleOutput.innerHTML = '<div class="p-2 text-danger">Timeout: Agentul AI a depășit timpul alocat (10s). Platforma nu a fost blocată.</div>';
+                    } else {
+                        consoleOutput.innerHTML = '<div class="p-2 text-danger">Complete current code failed: ' + err.message + '</div>';
+                    }
                 } finally {
                     btn.disabled = false;
                 }
@@ -363,14 +379,15 @@
                 preSteps.textContent = '';
 
                 try {
-                    const response = await fetch('/Home/ImproveSolution', {
+                    const response = await fetchWithTimeout('/Home/ImproveSolution', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             problemId: problemIdSolve,
                             sourceCode: sourceCode,
                             language: language
-                        })
+                        }),
+                        timeout: 10000
                     });
 
                     if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
@@ -393,7 +410,11 @@
                 } catch (err) {
                     preCode.textContent = '';
                     preDs.textContent = '';
-                    preSteps.textContent = 'Error: ' + err.message;
+                    if (err.name === 'AbortError' || err.message === 'Timeout') {
+                        preSteps.textContent = 'Timeout: Agentul AI a depășit timpul de așteptare de 10 secunde.';
+                    } else {
+                        preSteps.textContent = 'Error: ' + err.message;
+                    }
                 } finally {
                     if (improveUnlockedThisSession) setImproveSolutionEnabled(true);
                 }
@@ -412,7 +433,6 @@
                 improveUnlockedThisSession = false;
                 setImproveSolutionEnabled(false);
 
-                // Reset badges
                 const tcBadge = document.getElementById('timeComplexity');
                 const scBadge = document.getElementById('spaceComplexity');
                 tcBadge.innerText = "⏱ O(?)";
@@ -427,14 +447,12 @@
                         body: JSON.stringify({ problemId: parseInt(problemId), sourceCode, language })
                     });
 
-                    // If unauthorized, redirect to login
                     if (response.status === 401 || (response.redirected && response.url.includes('Login'))) {
                         window.location.href = '/Identity/Account/Login?ReturnUrl=' + encodeURIComponent(window.location.pathname);
                         return;
                     }
 
                     if (!response.ok) throw new Error(await response.text());
-
                     const data = await response.json();
                     pollStatus(data.submissionId);
                 } catch (err) {
@@ -548,14 +566,15 @@
                     try {
                         const sourceCode = window.editor.getValue();
                         const problemId = document.getElementById('monaco-editor-container').dataset.problemId;
-                        const aiResponse = await fetch('/Home/AnalyzeComplexity', {
+                        const aiResponse = await fetchWithTimeout('/Home/AnalyzeComplexity', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 problemId: parseInt(problemId),
                                 sourceCode: sourceCode,
                                 language: document.getElementById('languageSelect').value
-                            })
+                            }),
+                            timeout: 10000
                         });
 
                         if (aiResponse.ok) {
@@ -567,11 +586,18 @@
                             scBadge.classList.remove('text-warning');
                             tcBadge.classList.add('text-success', 'fw-bold');
                             scBadge.classList.add('text-success', 'fw-bold');
+                        } else {
+                            throw new Error("Bad response status");
                         }
                     } catch (e) {
                         console.error("Eroare la Agentul AI:", e);
-                        tcBadge.innerText = "⏱ O(?)";
-                        scBadge.innerText = "💾 O(?)";
+                        if (e.name === 'AbortError' || e.message === 'Timeout') {
+                            tcBadge.innerText = "⏱ Timeout AI";
+                            scBadge.innerText = "💾 Timeout AI";
+                        } else {
+                            tcBadge.innerText = "⏱ Eroare AI";
+                            scBadge.innerText = "💾 Eroare AI";
+                        }
                     }
                 }
             }
