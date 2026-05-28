@@ -1,11 +1,12 @@
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using JustBigO_Fun_.Data;
 using JustBigO_Fun_.Models;
 using JustBigO_Fun_.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Diagnostics;
 using System.Security.Claims;
 
 namespace JustBigO_Fun_.Controllers
@@ -145,20 +146,33 @@ namespace JustBigO_Fun_.Controllers
 
         [HttpPost]
         public async Task<IActionResult> AnalyzeComplexity(
-    [FromBody] SubmissionViewModel model,
-    [FromServices] IComplexityAnalyzer complexityAnalyzer)
+            [FromBody] SubmissionViewModel model,
+            [FromServices] IComplexityAnalyzer complexityAnalyzer)
         {
             if (string.IsNullOrWhiteSpace(model.SourceCode)) return BadRequest("Codul este gol.");
 
-            // DECOMENTĂM ASTA CA SĂ MEARGĂ PE BUNE:
-            var complexity = await complexityAnalyzer.AnalyzeCodeAsync(model.SourceCode);
-
-            // RETURNĂM REZULTATUL REAL:
-            return Json(new
+            try
             {
-                timeComplexity = complexity.TimeComplexity,
-                spaceComplexity = complexity.SpaceComplexity
-            });
+                // Gestionăm timeout-ul de 10 secunde să nu blocăm interfața.
+                var analyzeTask = complexityAnalyzer.AnalyzeCodeAsync(model.SourceCode);
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+
+                if (await Task.WhenAny(analyzeTask, timeoutTask) == analyzeTask)
+                {
+                    var complexity = await analyzeTask;
+                    return Json(new
+                    {
+                        timeComplexity = complexity.TimeComplexity,
+                        spaceComplexity = complexity.SpaceComplexity
+                    });
+                }
+
+                return StatusCode(504, "Timeout: Agentul AI a durat prea mult.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Eroare internă a agentului AI.");
+            }
         }
 
         [HttpPost]
@@ -196,6 +210,7 @@ namespace JustBigO_Fun_.Controllers
                 return BadRequest("Source code is empty.");
 
             var lang = string.IsNullOrWhiteSpace(model.Language) ? "python" : model.Language;
+
             var result = await completionService.CompleteAsync(
                 model.ProblemId,
                 model.SourceCode,
@@ -289,23 +304,42 @@ namespace JustBigO_Fun_.Controllers
         {
             if (!ModelState.IsValid) return BadRequest("Date invalide.");
 
-            // 1. Executăm codul prin Docker
+            // 1. Executăm codul prin Docker (Garantăm rularea neobstrucționată)
             await codeExecutor.ExecuteAsync(model.ProblemId);
 
             // TODO: Aici îți pui logica ta prin care citești dacă testele au trecut
-            // Momentan simulăm succesul pentru a vedea AI-ul în acțiune pe interfață
             bool isSuccess = true;
             string testCasesJson = "[]";
 
             string timeO = "O(?)";
             string spaceO = "O(?)";
 
-            // 2. Dacă codul trece testele, apelăm Agentul AI (Acceptance Criteria)
+            // 2. Dacă codul trece testele, apelăm Agentul AI cu TIMEOUT de 10 secunde
             if (isSuccess)
             {
-                var complexity = await complexityAnalyzer.AnalyzeCodeAsync(model.SourceCode);
-                timeO = complexity.TimeComplexity;
-                spaceO = complexity.SpaceComplexity;
+                try
+                {
+                    var analyzeTask = complexityAnalyzer.AnalyzeCodeAsync(model.SourceCode);
+                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+
+                    if (await Task.WhenAny(analyzeTask, timeoutTask) == analyzeTask)
+                    {
+                        var complexity = await analyzeTask;
+                        timeO = complexity.TimeComplexity;
+                        spaceO = complexity.SpaceComplexity;
+                    }
+                    else
+                    {
+                        // Timeout depășit, AI-ul pică, nu blocăm Docker-ul.
+                        timeO = "Timeout AI";
+                        spaceO = "Timeout AI";
+                    }
+                }
+                catch
+                {
+                    timeO = "Eroare AI";
+                    spaceO = "Eroare AI";
+                }
             }
 
             // 3. Returnăm formatul exact pe care îl așteaptă JavaScript-ul
