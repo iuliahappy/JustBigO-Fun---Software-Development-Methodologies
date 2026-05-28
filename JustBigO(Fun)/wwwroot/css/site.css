@@ -693,3 +693,10 @@ body {
     color: #e2e8f0;
 }
 
+.bg-dark .text-muted,
+.bg-black .text-muted,
+.jbo-workspace-right .text-muted,
+.jbo-workspace-panel .text-muted,
+.modal-content.bg-dark .text-muted {
+    color: #adb5bd !important; /* A much lighter, readable grey */
+}

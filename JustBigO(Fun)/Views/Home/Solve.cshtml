@@ -428,7 +428,7 @@
                     });
 
                     // If unauthorized, redirect to login
-                    if (response.status === 401) {
+                    if (response.status === 401 || (response.redirected && response.url.includes('Login'))) {
                         window.location.href = '/Identity/Account/Login?ReturnUrl=' + encodeURIComponent(window.location.pathname);
                         return;
                     }

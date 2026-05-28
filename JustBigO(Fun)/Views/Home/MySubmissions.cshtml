@@ -123,6 +123,11 @@ else
             try {
                 // Folosim API-ul de submission existent pe care l-ai creat
                 const response = await fetch('/api/submission/' + id);
+                // NEW: Check if ASP.NET redirected us to the login page!
+                if (response.redirected && response.url.includes('Login')) {
+                    window.location.href = '/Identity/Account/Login?ReturnUrl=' + encodeURIComponent(window.location.pathname);
+                    return;
+                }
                 if (!response.ok) throw new Error("Could not fetch code.");
                 
                 const data = await response.json();
