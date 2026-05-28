@@ -40,8 +40,8 @@ namespace JustBigO_Fun_.Tests.Hubs
             // Verify that SendAsync was called with the timeout error message
             mockClientProxy.Verify(
                 c => c.SendCoreAsync(
-                    "ReceiveCodeChunk", 
-                    It.Is<object[]>(o => o[0].ToString().Contains("[TIMEOUT]")), 
+                    "ReceiveCodeChunk",
+                    It.Is<object[]>(o => o[0].ToString().Contains("timed out")),
                     default), 
                 Times.Once);
         }
