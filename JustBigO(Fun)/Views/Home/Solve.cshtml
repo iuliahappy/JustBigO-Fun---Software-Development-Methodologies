@@ -52,18 +52,26 @@
 
     <div class="jbo-workspace-right w-100 d-flex flex-column">
 
-        <div class="jbo-editor-toolbar d-flex align-items-center gap-3 p-2">
+        <div class="jbo-editor-toolbar d-flex align-items-center gap-2 p-2">
+            <span class="small text-muted fw-bold ms-1">Source:</span>
             <select class="jbo-language-select form-select form-select-sm w-auto" id="languageSelect">
                 <option value="python">Python</option>
                 <option value="java">Java</option>
                 <option value="cpp">C++</option>
             </select>
 
-            <button id="btnTranspile" class="btn btn-sm btn-outline-info d-flex align-items-center gap-1">
-                <i class="bi bi-robot"></i> Transpile to Selected
+            <span class="small text-muted fw-bold ms-2">Target:</span>
+            <select class="jbo-language-select form-select form-select-sm w-auto border-info" id="targetLanguageSelect">
+                <option value="python">Python</option>
+                <option value="java" selected>Java</option>
+                <option value="cpp">C++</option>
+            </select>
+
+            <button id="btnTranspile" class="btn btn-sm btn-outline-info d-flex align-items-center gap-1 ms-2">
+                <i class="bi bi-robot"></i> Convert from Python to Java
             </button>
 
-            <button type="button" class="btn jbo-btn-ghost btn-sm" id="btnCompleteCode" title="AI completes your partial solution on the same approach (separate from Submit)">
+            <button type="button" class="btn jbo-btn-ghost btn-sm ms-2" id="btnCompleteCode" title="AI completes your partial solution on the same approach (separate from Submit)">
                 ✨ Complete current code
             </button>
 
@@ -186,18 +194,35 @@
             connection.start().catch(err => console.error("SignalR Error: ", err));
 
             let sourceLang = initialLang;
+            const sourceSelect = document.getElementById('languageSelect');
+            const targetSelect = document.getElementById('targetLanguageSelect');
+            const btnTranspile = document.getElementById('btnTranspile');
 
-            // Handle Language Change for User Editor
-            document.getElementById('languageSelect').addEventListener('change', function(e) {
+            // --- NEW: Update dynamic button text ---
+            function updateTranspileButtonText() {
+                const srcText = sourceSelect.options[sourceSelect.selectedIndex].text;
+                const tgtText = targetSelect.options[targetSelect.selectedIndex].text;
+                btnTranspile.innerHTML = `<i class="bi bi-robot"></i> Convert from ${srcText} to ${tgtText}`;
+            }
+
+            // Set initial text on page load
+            updateTranspileButtonText();
+
+            // Handle Target Language Change
+            targetSelect.addEventListener('change', updateTranspileButtonText);
+
+            // Handle Source Language Change for User Editor
+            sourceSelect.addEventListener('change', function(e) {
                 sourceLang = e.target.value;
                 const template = codeTemplates[sourceLang] || defaultCode;
                 window.editor.setValue(template);
                 monaco.editor.setModelLanguage(window.editor.getModel(), sourceLang);
+                updateTranspileButtonText(); // Update the button text when source changes
             });
 
             // Handle Transpile Button
-            document.getElementById('btnTranspile').addEventListener('click', async function() {
-                const targetLang = document.getElementById('languageSelect').value;
+            btnTranspile.addEventListener('click', async function() {
+                const targetLang = targetSelect.value; // <-- NOW PROPERLY READS FROM THE TARGET DROPDOWN
                 const sourceCode = window.editor.getValue();
                 const loadingBar = document.getElementById('aiLoadingIndicator');
                 const aiContainer = document.getElementById('ai-editor-container');
@@ -222,6 +247,9 @@
                     loadingBar.style.setProperty('display', 'none', 'important');
                 }
             });
+
+           
+             
 
             // Ask for Hint Button Logic
             document.getElementById('askHintBtn').addEventListener('click', async function() {

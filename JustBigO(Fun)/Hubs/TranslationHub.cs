@@ -17,26 +17,11 @@ namespace JustBigO_Fun_.Hubs
         {
             if (string.IsNullOrWhiteSpace(sourceCode)) return;
 
-            // Increased to 60s to allow multiple reflexion loops (AI gen + Docker test)
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            // CRITICAL FIX: Use the Docker Reflexion loop instead of the old stream!
+            var finalValidatedCode = await _translatorAgent.TranslateWithReflexionAsync(sourceCode, sourceLang, targetLang);
 
-            try
-            {
-                // CRITICAL: Call the new Reflexion method, not the streaming one!
-                // We pass the cancellation token to handle the timeout
-                var finalValidatedCode = await _translatorAgent.TranslateWithReflexionAsync(sourceCode, sourceLang, targetLang, cts.Token);
-
-                // Send the final, validated code to the frontend UI
-                await Clients.Caller.SendAsync("ReceiveCodeChunk", finalValidatedCode);
-            }
-            catch (OperationCanceledException)
-            {
-                await Clients.Caller.SendAsync("ReceiveCodeChunk", "\n// [TIMEOUT] The AI agent took too long to respond (10s limit).\n// Please try again or simplify the code.");
-            }
-            catch (System.Exception ex)
-            {
-                await Clients.Caller.SendAsync("ReceiveCodeChunk", $"\n// [ERROR] An unexpected error occurred: {ex.Message}");
-            }
+            // Send the final, validated code to the right-side editor
+            await Clients.Caller.SendAsync("ReceiveCodeChunk", finalValidatedCode);
         }
     }
 }
