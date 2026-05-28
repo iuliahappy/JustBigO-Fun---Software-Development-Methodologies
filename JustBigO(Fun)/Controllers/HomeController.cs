@@ -184,6 +184,9 @@ namespace JustBigO_Fun_.Controllers
             if (model.ProblemId <= 0)
                 return BadRequest("ProblemId invalid.");
 
+            //this is a command to stop the AI enough in order to show the 10s error
+            //await Task.Delay(15000);
+
             var problem = await _db.Problems.FirstOrDefaultAsync(p => p.Id == model.ProblemId);
             if (problem == null)
                 return NotFound("Problema nu a fost gasita.");
