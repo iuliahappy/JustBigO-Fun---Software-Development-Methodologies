@@ -1,0 +1,87 @@
+@* Loads the EasyMDE Markdown editor (dark-themed) and binds it to the Description textarea (id="Description"). *@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+
+<style>
+    /* Dark theme for EasyMDE so it matches the admin UI. */
+    .EasyMDEContainer .editor-toolbar {
+        background-color: #1b1f24;
+        border-color: #495057;
+        border-top-left-radius: .375rem;
+        border-top-right-radius: .375rem;
+        opacity: 1;
+    }
+    .EasyMDEContainer .editor-toolbar button {
+        color: #e9ecef !important;
+    }
+    .EasyMDEContainer .editor-toolbar button:hover,
+    .EasyMDEContainer .editor-toolbar button.active {
+        background-color: #343a40;
+        border-color: #495057;
+    }
+    .EasyMDEContainer .editor-toolbar i.separator {
+        border-left-color: #343a40;
+        border-right-color: #495057;
+    }
+    .EasyMDEContainer .CodeMirror {
+        background-color: #212529;
+        color: #f8f9fa;
+        border-color: #495057;
+        border-bottom-left-radius: .375rem;
+        border-bottom-right-radius: .375rem;
+    }
+    .EasyMDEContainer .CodeMirror-cursor {
+        border-color: #f8f9fa;
+    }
+    .EasyMDEContainer .CodeMirror-selected,
+    .EasyMDEContainer .CodeMirror-line::selection,
+    .EasyMDEContainer .CodeMirror-line > span::selection {
+        background: #34507a !important;
+    }
+    .EasyMDEContainer .editor-preview,
+    .EasyMDEContainer .editor-preview-side {
+        background-color: #1b1f24;
+        color: #f8f9fa;
+    }
+    .EasyMDEContainer .editor-preview pre,
+    .EasyMDEContainer .editor-preview code {
+        background-color: #212529;
+        color: #f8f9fa;
+    }
+    .EasyMDEContainer .editor-statusbar {
+        color: #adb5bd;
+    }
+</style>
+
+<script>
+    (function () {
+        var el = document.getElementById("Description");
+        if (!el || typeof EasyMDE === "undefined") return;
+
+        // One-click insertion of a worked example with separate Input / Output code blocks.
+        var insertExample = {
+            name: "example",
+            title: "Insert example",
+            className: "fa fa-lightbulb-o",
+            action: function (editor) {
+                var cm = editor.codemirror;
+                cm.replaceSelection("\n**Example**\n\nInput:\n```text\n\n```\nOutput:\n```text\n\n```\n");
+            }
+        };
+
+        new EasyMDE({
+            element: el,
+            spellChecker: false,
+            status: ["lines", "words"],
+            minHeight: "240px",
+            placeholder: "Describe the problem...",
+            toolbar: [
+                "bold", "italic", "heading", "|",
+                "code", "quote", "unordered-list", "ordered-list", "|",
+                "link", insertExample, "|",
+                "preview", "guide"
+            ]
+        });
+    })();
+</script>

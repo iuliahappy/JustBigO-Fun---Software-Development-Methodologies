@@ -573,6 +573,33 @@ body {
     line-height: 1.6;
 }
 
+/* Fenced code blocks (e.g. ```text examples) authored in Markdown. */
+.jbo-problem-content pre {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 3px solid #38bdf8;
+    padding: 0.85rem 1rem;
+    margin-block: 1rem;
+    border-radius: 0 0.5rem 0.5rem 0;
+    overflow-x: auto;
+}
+
+.jbo-problem-content pre code {
+    background: transparent;
+    padding: 0;
+    color: #e2e8f0;
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+/* Inline code spans. */
+.jbo-problem-content code {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.25rem;
+    font-size: 0.85em;
+}
+
 .jbo-example-box {
     background: rgba(255,255,255,0.05);
     border-left: 3px solid #38bdf8;
@@ -697,6 +724,7 @@ body {
 .bg-black .text-muted,
 .jbo-workspace-right .text-muted,
 .jbo-workspace-panel .text-muted,
-.modal-content.bg-dark .text-muted {
+.modal-content.bg-dark .text-muted,
+.text-muted {
     color: #adb5bd !important; /* A much lighter, readable grey */
 }

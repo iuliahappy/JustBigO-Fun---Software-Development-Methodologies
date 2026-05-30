@@ -6,6 +6,15 @@
 <div class="container py-4">
     <h1 class="text-white mb-4">Edit: @Model.Title</h1>
 
+    @if (TempData["AdminMessage"] is string okMsg)
+    {
+        <div class="alert alert-success">@okMsg</div>
+    }
+    @if (TempData["AdminError"] is string errMsg)
+    {
+        <div class="alert alert-danger">@errMsg</div>
+    }
+
     <form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="jbo-section-card p-4">
         <input type="hidden" asp-for="Id" />
         <div asp-validation-summary="All" class="text-danger mb-3"></div>
@@ -28,25 +37,23 @@
                 </select>
             </div>
             <div class="col-md-4">
-                <label asp-for="OrderIndex" class="form-label text-white">Order</label>
-                <input asp-for="OrderIndex" type="number" class="form-control bg-dark text-white border-secondary" />
+                <label class="form-label text-white">Order (auto-assigned)</label>
+                <input value="@Model.OrderIndex" class="form-control bg-dark text-muted border-secondary" readonly disabled />
             </div>
             <div class="col-md-4">
                 <label asp-for="Tags" class="form-label text-white">Tags (comma-separated)</label>
                 <input asp-for="Tags" class="form-control bg-dark text-white border-secondary" />
             </div>
             <div class="col-12">
-                <label asp-for="Description" class="form-label text-white">Description (HTML)</label>
-                <textarea asp-for="Description" class="form-control bg-dark text-white border-secondary" rows="6"></textarea>
-            </div>
-            <div class="col-12">
-                <label asp-for="CodeTemplatesJson" class="form-label text-white">Code templates (JSON)</label>
-                <textarea asp-for="CodeTemplatesJson" class="form-control bg-dark text-white border-secondary font-monospace" rows="8" style="font-size: 0.85rem;"></textarea>
+                <label asp-for="Description" class="form-label text-white">Description</label>
+                <textarea asp-for="Description" class="form-control" rows="8"></textarea>
             </div>
 
+            <partial name="_CodeTemplatesEditor" model="Model" />
+
             <div class="col-12 border-top border-secondary pt-4 mt-3">
-                <h5 class="text-white mb-3">Add new tests (.in / .out)</h5>
-                <p class="text-muted small mb-2">@Model.ExistingTestCount existing tests. To add more: select ALL new .in files and ALL new .out files (Ctrl+Click). Pairing: 1st .in ↔ 1st .out, 2nd ↔ 2nd, etc.</p>
+                <h5 class="text-white mb-3">Bulk add tests from files (.in / .out)</h5>
+                <p class="text-muted small mb-2">Select ALL new .in files and ALL new .out files (Ctrl+Click). Pairing: 1st .in ↔ 1st .out, 2nd ↔ 2nd, etc. Uploaded tests are appended to the list below after saving.</p>
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label text-white">.in files</label>
@@ -65,4 +72,68 @@
             </div>
         </div>
     </form>
+
+    @* Test case management lives outside the main form because HTML forms cannot be nested. *@
+    <div class="jbo-section-card p-4 mt-4">
+        <h5 class="text-white mb-3">Test cases (@Model.Tests.Count)</h5>
+
+        @if (Model.Tests.Count == 0)
+        {
+            <p class="text-muted">No test cases yet. Add one below.</p>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3 mb-4">
+                @foreach (var t in Model.Tests)
+                {
+                    <div class="border border-secondary rounded p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-white fw-bold">Test #@t.OrderIndex</span>
+                            <form asp-action="DeleteTest" asp-route-problemId="@Model.Id" asp-route-testId="@t.Id" method="post" class="m-0" onsubmit="return confirm('Delete this test case?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                        </div>
+                        <form asp-action="EditTest" asp-route-problemId="@Model.Id" asp-route-testId="@t.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-white small">Input</label>
+                                    <textarea name="inputJson" class="form-control bg-dark text-white border-secondary font-monospace" rows="4" style="font-size: 0.85rem;" spellcheck="false">@t.InputJson</textarea>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-white small">Expected output</label>
+                                    <textarea name="expectedOutputJson" class="form-control bg-dark text-white border-secondary font-monospace" rows="4" style="font-size: 0.85rem;" spellcheck="false">@t.ExpectedOutputJson</textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-sm jbo-btn-primary mt-2">Save test</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="border-top border-secondary pt-3">
+            <h6 class="text-white mb-3">Add a test case</h6>
+            <form asp-action="AddTest" asp-route-problemId="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-white small">Input</label>
+                        <textarea name="inputJson" class="form-control bg-dark text-white border-secondary font-monospace" rows="4" style="font-size: 0.85rem;" spellcheck="false"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-white small">Expected output</label>
+                        <textarea name="expectedOutputJson" class="form-control bg-dark text-white border-secondary font-monospace" rows="4" style="font-size: 0.85rem;" spellcheck="false"></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-sm jbo-btn-primary mt-2">+ Add test</button>
+            </form>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <partial name="_MarkdownEditorAssets" />
+    <partial name="_CodeTemplatesScripts" />
+}

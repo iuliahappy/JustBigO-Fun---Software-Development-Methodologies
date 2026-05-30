@@ -22,11 +22,10 @@
                 </tr>
             </thead>
             <tbody>
-                @{ var i = 1; }
                 @foreach (var p in Model ?? Enumerable.Empty<ProblemListVm>())
                 {
                     <tr>
-                        <td>@(i++)</td>
+                        <td>@p.OrderIndex</td>
                         <td>@p.Title</td>
                         <td><code>@p.Slug</code></td>
                         <td>@p.Difficulty</td>

@@ -15,11 +15,13 @@ namespace JustBigO_Fun_.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly ApplicationDbContext _db;
+        private readonly IMarkdownRenderer _markdown;
 
-        public HomeController(ILogger<HomeController> logger, ApplicationDbContext db)
+        public HomeController(ILogger<HomeController> logger, ApplicationDbContext db, IMarkdownRenderer markdown)
         {
             _logger = logger;
             _db = db;
+            _markdown = markdown;
         }
 
         // --- INCEPUT MODIFICARE ---
@@ -109,6 +111,13 @@ namespace JustBigO_Fun_.Controllers
                 if (problem == null)
                     return RedirectToAction(nameof(Index));
             }
+
+            // Descriptions are authored in Markdown. Render to sanitized HTML before display
+            // (the view emits this via @Html.Raw). This is a read-only projection; the entity
+            // is not persisted from this action. Legacy HTML-authored descriptions still render
+            // correctly because Markdig passes raw HTML through, and the output is sanitized.
+            problem.Description = _markdown.RenderToSafeHtml(problem.Description);
+
             return View(problem);
         }
 
