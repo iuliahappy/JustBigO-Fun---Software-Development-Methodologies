@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using JustBigO_Fun_.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -5,6 +6,91 @@ namespace JustBigO_Fun_.Data;
 
 public static class ProblemSeeder
 {
+    // Problem statements are authored in Markdown. These constants are also used to migrate
+    // the original HTML-authored descriptions to Markdown on startup (see LooksLikeHtml usage below).
+    private const string TwoSumDescription = """
+        Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.
+
+        You may assume that each input would have **exactly one solution**, and you may not use the same element twice.
+
+        **Input Format:** Line 1: N (number of elements). Line 2: N space-separated integers. Line 3: target integer.
+
+        **Output Format:** Two space-separated indices.
+
+        **Example**
+
+        Input:
+        ```text
+        4
+        2 7 11 15
+        9
+        ```
+        Output:
+        ```text
+        0 1
+        ```
+        """;
+
+    private const string LevelOrderDescription = """
+        Given the `root` of a binary tree, return the level order traversal of its nodes' values.
+
+        **Input Format:** Line 1: N (number of nodes). Line 2: N space-separated values representing the level-order traversal (use `null` for empty nodes).
+
+        **Output Format:** Print each level on a new line, space-separated.
+
+        **Example**
+
+        Input:
+        ```text
+        7
+        3 9 20 null null 15 7
+        ```
+        Output:
+        ```text
+        3
+        9 20
+        15 7
+        ```
+        """;
+
+    private const string MinWindowDescription = """
+        Given two strings `s` and `t`, return the minimum window substring of `s` such that every character in `t` (including duplicates) is included in the window.
+
+        If there is no such substring, return the empty string.
+
+        **Input Format:** Line 1: string s. Line 2: string t.
+
+        **Output Format:** The substring (or empty line).
+
+        **Example**
+
+        Input:
+        ```text
+        ADOBECODEBANC
+        ABC
+        ```
+        Output:
+        ```text
+        BANC
+        ```
+        """;
+
+    /// <summary>Heuristic: does the description still contain raw HTML markup (legacy format)?</summary>
+    private static bool LooksLikeHtml(string? text) =>
+        !string.IsNullOrWhiteSpace(text) && Regex.IsMatch(text, "<[a-zA-Z][^>]*>");
+
+    /// <summary>
+    /// True if a seeded description should be refreshed to the canonical Markdown: either it is still
+    /// raw HTML, or it is an earlier auto-generated form that placed Input:/Output: inside a single
+    /// code fence. Admin-authored Markdown in the current format is left untouched.
+    /// </summary>
+    private static bool NeedsDescriptionMigration(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        if (LooksLikeHtml(text)) return true;
+        return Regex.IsMatch(text, "```text\\s*\\r?\\nInput:");
+    }
+
     public static async Task SeedAsync(ApplicationDbContext db)
     {
         // If problems exist, we still want to ensure MethodNames are set for this feature
@@ -15,6 +101,7 @@ public static class ProblemSeeder
             {
                 if (string.IsNullOrEmpty(p1.MethodName)) p1.MethodName = "two_sum";
                 p1.SignatureJson = "{\"parameters\":[{\"name\":\"nums\",\"type\":\"int[]\"},{\"name\":\"target\",\"type\":\"int\"}],\"returnType\":\"int[]\"}";
+                if (NeedsDescriptionMigration(p1.Description)) p1.Description = TwoSumDescription;
             }
 
             var p2 = await db.Problems.FirstOrDefaultAsync(p => p.Slug == "binary-tree-level-order");
@@ -22,6 +109,7 @@ public static class ProblemSeeder
             {
                 if (string.IsNullOrEmpty(p2.MethodName)) p2.MethodName = "level_order";
                 p2.SignatureJson = "{\"parameters\":[{\"name\":\"root\",\"type\":\"TreeNode\"}],\"returnType\":\"int[][]\"}";
+                if (NeedsDescriptionMigration(p2.Description)) p2.Description = LevelOrderDescription;
             }
 
             var p3 = await db.Problems.FirstOrDefaultAsync(p => p.Slug == "minimum-window-substring");
@@ -29,8 +117,9 @@ public static class ProblemSeeder
             {
                 if (string.IsNullOrEmpty(p3.MethodName)) p3.MethodName = "min_window";
                 p3.SignatureJson = "{\"parameters\":[{\"name\":\"s\",\"type\":\"string\"},{\"name\":\"t\",\"type\":\"string\"}],\"returnType\":\"string\"}";
+                if (NeedsDescriptionMigration(p3.Description)) p3.Description = MinWindowDescription;
             }
-            
+
             await db.SaveChangesAsync();
             return;
         }
@@ -51,16 +140,7 @@ public static class ProblemSeeder
             OrderIndex = 1,
             MethodName = "two_sum",
             SignatureJson = "{\"parameters\":[{\"name\":\"nums\",\"type\":\"int[]\"},{\"name\":\"target\",\"type\":\"int\"}],\"returnType\":\"int[]\"}",
-            Description = """
-                <p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.</p>
-                <p>You may assume that each input would have <strong>exactly one solution</strong>, and you may not use the same element twice.</p>
-                <p><strong>Input Format:</strong> Line 1: N (number of elements). Line 2: N space-separated integers. Line 3: target integer.</p>
-                <p><strong>Output Format:</strong> Two space-separated indices.</p>
-                <div class="jbo-example-box">
-                    <strong>Input:</strong><br/>4<br/>2 7 11 15<br/>9<br />
-                    <strong>Output:</strong> 0 1
-                </div>
-                """,
+            Description = TwoSumDescription,
             CodeTemplatesJson = twoSumTemplates
         };
 
@@ -80,15 +160,7 @@ public static class ProblemSeeder
             OrderIndex = 2,
             MethodName = "level_order",
             SignatureJson = "{\"parameters\":[{\"name\":\"root\",\"type\":\"TreeNode\"}],\"returnType\":\"int[][]\"}",
-            Description = """
-                <p>Given the <code>root</code> of a binary tree, return the level order traversal of its nodes' values.</p>
-                <p><strong>Input Format:</strong> Line 1: N (number of nodes). Line 2: N space-separated values representing the level-order traversal (use 'null' for empty nodes).</p>
-                <p><strong>Output Format:</strong> Print each level on a new line, space-separated.</p>
-                <div class="jbo-example-box">
-                    <strong>Input:</strong><br/>7<br/>3 9 20 null null 15 7<br />
-                    <strong>Output:</strong><br/>3<br/>9 20<br/>15 7
-                </div>
-                """,
+            Description = LevelOrderDescription,
             CodeTemplatesJson = levelOrderTemplates
         };
 
@@ -108,16 +180,7 @@ public static class ProblemSeeder
             OrderIndex = 3,
             MethodName = "min_window",
             SignatureJson = "{\"parameters\":[{\"name\":\"s\",\"type\":\"string\"},{\"name\":\"t\",\"type\":\"string\"}],\"returnType\":\"string\"}",
-            Description = """
-                <p>Given two strings <code>s</code> and <code>t</code>, return the minimum window substring of <code>s</code> such that every character in <code>t</code> (including duplicates) is included in the window.</p>
-                <p>If there is no such substring, return the empty string.</p>
-                <p><strong>Input Format:</strong> Line 1: string s. Line 2: string t.</p>
-                <p><strong>Output Format:</strong> The substring (or empty line).</p>
-                <div class="jbo-example-box">
-                    <strong>Input:</strong><br/>ADOBECODEBANC<br/>ABC<br />
-                    <strong>Output:</strong> BANC
-                </div>
-                """,
+            Description = MinWindowDescription,
             CodeTemplatesJson = minWindowTemplates
         };
 

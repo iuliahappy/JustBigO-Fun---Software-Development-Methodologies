@@ -1,6 +1,7 @@
 using JustBigO_Fun_.Controllers;
 using JustBigO_Fun_.Data;
 using JustBigO_Fun_.Models;
+using JustBigO_Fun_.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -33,7 +34,7 @@ namespace JustBigO_Fun_.Tests.Controllers
             db.SaveChanges();
 
             var mockLogger = new Mock<ILogger<HomeController>>();
-            var controller = new HomeController(mockLogger.Object, db);
+            var controller = new HomeController(mockLogger.Object, db, new MarkdownRenderer(new HtmlSanitizerService()));
             
             // Mocking User identity
             var user = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity());
@@ -61,7 +62,7 @@ namespace JustBigO_Fun_.Tests.Controllers
             db.SaveChanges();
 
             var mockLogger = new Mock<ILogger<HomeController>>();
-            var controller = new HomeController(mockLogger.Object, db);
+            var controller = new HomeController(mockLogger.Object, db, new MarkdownRenderer(new HtmlSanitizerService()));
 
             // Mocking User identity
             var user = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity());
@@ -86,7 +87,7 @@ namespace JustBigO_Fun_.Tests.Controllers
             // Arrange
             using var db = new ApplicationDbContext(_options);
             var mockLogger = new Mock<ILogger<HomeController>>();
-            var controller = new HomeController(mockLogger.Object, db);
+            var controller = new HomeController(mockLogger.Object, db, new MarkdownRenderer(new HtmlSanitizerService()));
 
             // Act
             var result = await controller.Solve(999);

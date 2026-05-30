@@ -1,0 +1,70 @@
+@* Syntax highlighting for the per-language code templates using Monaco (same editor as /solve). *@
+<style>
+    .jbo-template-editor {
+        height: 280px;
+        border: 1px solid #495057;
+        border-radius: .375rem;
+        overflow: hidden;
+    }
+
+    /* Dark-themed language tabs (replace Bootstrap's default blue link text). */
+    .jbo-template-tabs {
+        border-bottom-color: #495057;
+    }
+    .jbo-template-tabs .nav-link {
+        color: #adb5bd;
+        border-color: transparent;
+        background-color: transparent;
+    }
+    .jbo-template-tabs .nav-link:hover,
+    .jbo-template-tabs .nav-link:focus {
+        color: #fff;
+        border-color: #495057 #495057 transparent;
+    }
+    .jbo-template-tabs .nav-link.active {
+        color: #fff;
+        background-color: #212529;
+        border-color: #495057 #495057 #212529;
+    }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script>
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+    require(['vs/editor/editor.main'], function () {
+        function makeEditor(containerId, textareaId, language) {
+            var ta = document.getElementById(textareaId);
+            var container = document.getElementById(containerId);
+            if (!ta || !container) return null;
+
+            var ed = monaco.editor.create(container, {
+                value: ta.value,
+                language: language,
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontSize: 14,
+                fontFamily: '"JetBrains Mono", Consolas, monospace',
+                scrollBeyondLastLine: false,
+                roundedSelection: true
+            });
+
+            // Keep the (hidden) textarea in sync so the form posts the edited template.
+            ed.onDidChangeModelContent(function () { ta.value = ed.getValue(); });
+            return ed;
+        }
+
+        var editors = [
+            makeEditor('monaco-python', 'PythonTemplate', 'python'),
+            makeEditor('monaco-java', 'JavaTemplate', 'java'),
+            makeEditor('monaco-cpp', 'CppTemplate', 'cpp')
+        ];
+
+        // Editors created inside hidden Bootstrap tabs need a relayout once their tab is shown.
+        document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(function (btn) {
+            btn.addEventListener('shown.bs.tab', function () {
+                editors.forEach(function (ed) { if (ed) ed.layout(); });
+            });
+        });
+    });
+</script>

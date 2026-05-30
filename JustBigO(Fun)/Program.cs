@@ -26,6 +26,10 @@ builder.Services.AddHttpClient<IApproachAnalyzer, GeminiApproachAnalyzer>();
 builder.Services.AddHttpClient<ICodeCompleter, GeminiCodeCompleter>();
 builder.Services.AddScoped<ICurrentCodeCompletionService, CurrentCodeCompletionService>();
 builder.Services.AddHttpClient<IRefactoringSuggestionGenerator, GeminiRefactoringSuggestionGenerator>();
+// HtmlSanitizer is thread-safe and stateless, so a singleton is appropriate.
+builder.Services.AddSingleton<IHtmlSanitizer, HtmlSanitizerService>();
+// Renders Markdown problem statements to sanitized HTML.
+builder.Services.AddSingleton<IMarkdownRenderer, MarkdownRenderer>();
 // -----------------------------
 
 // --- CONFIGURARE IDENTITY ---

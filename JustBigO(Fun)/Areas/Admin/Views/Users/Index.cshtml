@@ -1,0 +1,82 @@
+@model UsersIndexVm
+@{
+    ViewData["Title"] = "Manage users";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="text-white">Manage users</h1>
+        <a asp-controller="Dashboard" asp-action="Index" class="btn jbo-btn-ghost">← Admin dashboard</a>
+    </div>
+
+    @if (TempData["AdminMessage"] is string okMsg)
+    {
+        <div class="alert alert-success">@okMsg</div>
+    }
+    @if (TempData["AdminError"] is string errMsg)
+    {
+        <div class="alert alert-danger">@errMsg</div>
+    }
+
+    <div class="jbo-section-card">
+        <table class="jbo-mini-table">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Username</th>
+                    <th>Current role</th>
+                    <th style="min-width: 280px;">Role management</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model.Users)
+                {
+                    <tr>
+                        <td>
+                            @u.Email
+                            @if (u.IsCurrentUser)
+                            {
+                                <span class="jbo-badge text-info ms-1">you</span>
+                            }
+                        </td>
+                        <td>@u.UserName</td>
+                        <td>
+                            <span class="jbo-badge @(u.Role == "Admin" ? "text-warning" : "text-muted")">@u.Role</span>
+                        </td>
+                        <td>
+                            @if (u.IsCurrentUser)
+                            {
+                                <span class="text-muted small">You cannot change your own role.</span>
+                            }
+                            else
+                            {
+                                <form asp-action="UpdateRole" method="post" class="d-flex gap-2 align-items-center">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@u.Id" />
+                                    <select name="role" class="form-select form-select-sm bg-dark text-white border-secondary" style="max-width: 160px;">
+                                        @foreach (var role in Model.AvailableRoles)
+                                        {
+                                            if (role == u.Role)
+                                            {
+                                                <option value="@role" selected>@role</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@role">@role</option>
+                                            }
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-sm jbo-btn-primary">Save</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <p class="mt-3">
+        <a asp-controller="Dashboard" asp-action="Index" class="jbo-problem-link">← Back to admin dashboard</a>
+    </p>
+</div>
