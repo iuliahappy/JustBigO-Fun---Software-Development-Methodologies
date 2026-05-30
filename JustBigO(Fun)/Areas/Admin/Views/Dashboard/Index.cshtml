@@ -1,0 +1,58 @@
+@model AdminDashboardVm
+@{
+    ViewData["Title"] = "Admin dashboard";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="text-white mb-1">Admin dashboard</h1>
+            <p class="text-muted mb-0">Manage problems, test cases and user access.</p>
+        </div>
+        <a asp-controller="Home" asp-action="Index" asp-area="" class="btn jbo-btn-ghost">← Back to site</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="jbo-section-card text-center py-3">
+                <div class="text-white fs-3 fw-bold">@Model.ProblemCount</div>
+                <div class="text-muted small">Problems</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="jbo-section-card text-center py-3">
+                <div class="text-white fs-3 fw-bold">@Model.TestCount</div>
+                <div class="text-muted small">Test cases</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="jbo-section-card text-center py-3">
+                <div class="text-white fs-3 fw-bold">@Model.SubmissionCount</div>
+                <div class="text-muted small">Submissions</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="jbo-section-card text-center py-3">
+                <div class="text-white fs-3 fw-bold">@Model.UserCount</div>
+                <div class="text-muted small">Users (@Model.AdminCount admin@(Model.AdminCount == 1 ? "" : "s"))</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="jbo-section-card p-4 h-100 d-flex flex-column">
+                <h5 class="text-white">Problems</h5>
+                <p class="text-muted flex-grow-1">Create, edit and delete problems, manage code templates and test cases.</p>
+                <a asp-controller="Problems" asp-action="Index" class="btn jbo-btn-primary align-self-start">Manage problems →</a>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="jbo-section-card p-4 h-100 d-flex flex-column">
+                <h5 class="text-white">Users</h5>
+                <p class="text-muted flex-grow-1">View registered users and promote or demote their roles.</p>
+                <a asp-controller="Users" asp-action="Index" class="btn jbo-btn-primary align-self-start">Manage users →</a>
+            </div>
+        </div>
+    </div>
+</div>
