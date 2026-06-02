@@ -1,0 +1,83 @@
+@model IEnumerable<JustBigO_Fun_.Models.ProblemListItem>
+@{
+    ViewData["Title"] = "Problem Set";
+    string GetDifficultyClass(string d) => d?.ToLowerInvariant() switch { "medium" => "medium", "hard" => "hard", _ => "easy" };
+}
+
+<section class="jbo-section-card" id="problemset">
+    <header class="jbo-section-header">
+        <div>
+            <h1 class="jbo-section-title">Problem set</h1>
+            <p class="jbo-section-subtitle">
+                Browse problems by difficulty and track the status of your submissions.
+            </p>
+        </div>
+        <div class="jbo-chip-row">
+            <a asp-action="Problems"
+               asp-route-sortOrder="@Context.Request.Query["sortOrder"]"
+               asp-route-difficultyFilter=""
+               class="jbo-chip"
+               style="text-decoration: none; color: inherit; @(string.IsNullOrEmpty(ViewData["CurrentFilter"]?.ToString()) ? "outline: 2px solid currentColor; outline-offset: 2px;" : "opacity: 0.6;")">
+                All
+            </a>
+            <a asp-action="Problems"
+               asp-route-sortOrder="@Context.Request.Query["sortOrder"]"
+               asp-route-difficultyFilter="Easy"
+               class="jbo-chip jbo-chip--easy"
+               style="text-decoration: none; @(ViewData["CurrentFilter"]?.ToString() == "Easy" ? "outline: 2px solid currentColor; outline-offset: 2px;" : "opacity: 0.6;")">
+                Easy
+            </a>
+            <a asp-action="Problems"
+               asp-route-sortOrder="@Context.Request.Query["sortOrder"]"
+               asp-route-difficultyFilter="Medium"
+               class="jbo-chip jbo-chip--medium"
+               style="text-decoration: none; @(ViewData["CurrentFilter"]?.ToString() == "Medium" ? "outline: 2px solid currentColor; outline-offset: 2px;" : "opacity: 0.6;")">
+                Medium
+            </a>
+            <a asp-action="Problems"
+               asp-route-sortOrder="@Context.Request.Query["sortOrder"]"
+               asp-route-difficultyFilter="Hard"
+               class="jbo-chip jbo-chip--hard"
+               style="text-decoration: none; @(ViewData["CurrentFilter"]?.ToString() == "Hard" ? "outline: 2px solid currentColor; outline-offset: 2px;" : "opacity: 0.6;")">
+                Hard
+            </a>
+        </div>
+    </header>
+
+    <table class="jbo-mini-table">
+        <thead>
+            <tr>
+                <th>Problem</th>
+                <th>Tags</th>
+                <th>
+                    <a asp-action="Problems"
+                       asp-route-sortOrder="@ViewData["DifficultySortParm"]"
+                       asp-route-difficultyFilter="@ViewData["CurrentFilter"]"
+                       style="color: inherit; text-decoration: underline; cursor: pointer;">
+                        Difficulty ↕
+                    </a>
+                </th>
+                <th>Best status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model ?? Enumerable.Empty<JustBigO_Fun_.Models.ProblemListItem>())
+            {
+                <tr>
+                    <td><a asp-action="Solve" asp-route-id="@p.Id" class="jbo-problem-link">@p.Title</a></td>
+                    <td>@p.Tags</td>
+                    <td><span class="jbo-chip jbo-chip--@GetDifficultyClass(p.Difficulty)">@p.Difficulty</span></td>
+                    <td>
+                        @{
+                            string statusClass = "";
+                            if (p.BestStatus == "Accepted") statusClass = "jbo-status-chip--accepted";
+                            else if (p.BestStatus == "TimeLimitExceeded") statusClass = "jbo-status-chip--tle";
+                            else if (p.BestStatus != "—") statusClass = "jbo-status-chip--wa";
+                        }
+                        <span class="jbo-status-chip @statusClass">@p.BestStatus</span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
