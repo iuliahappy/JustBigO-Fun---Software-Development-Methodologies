@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace JustBigO_Fun_.Services;
 
@@ -28,9 +29,13 @@ public class GeminiHintGenerator : IHintGenerator
 
         var prompt = $"""
             You are a programming mentor for an algorithms platform.
-            Return exactly one concise hint in English, max 2 short paragraphs.
-            Do NOT provide full solution code.
-            Keep the hint actionable and contextual.
+            Return exactly ONE subtle hint in English, maximum 1-2 short sentences.
+            STRICT RULES:
+            - Do NOT provide code, pseudocode, or step-by-step algorithm.
+            - Do NOT reveal the full strategy or optimal full solution.
+            - Prefer a nudge: mention one data structure, one invariant, or one leading question.
+            - If the user is already close, only point to the next tiny step.
+            - Keep it spoiler-free and concise.
             Note: The platform uses a Standard IO model (Competitive Programming style). The user must READ from stdin and PRINT to stdout.
 
             Problem title: {problemTitle}
@@ -86,11 +91,46 @@ public class GeminiHintGenerator : IHintGenerator
                 return "No valid hint was returned. Please try again.";
             }
 
-            return hintText.Trim();
+            return SanitizeHint(hintText);
         }
         catch
         {
             return "An error occurred while generating the hint. Please try again.";
         }
+    }
+
+    private static string SanitizeHint(string hintText)
+    {
+        if (string.IsNullOrWhiteSpace(hintText))
+            return "Try focusing on one small invariant that must stay true at each step.";
+
+        // Remove fenced code blocks or inline code to avoid accidental full solutions.
+        var sanitized = Regex.Replace(hintText, "```[\\s\\S]*?```", string.Empty);
+        sanitized = Regex.Replace(sanitized, "`[^`]*`", string.Empty).Trim();
+
+        // Keep only first 1-2 sentences to force a subtle nudge.
+        var sentenceMatches = Regex.Matches(sanitized, @"[^.!?]+[.!?]?");
+        if (sentenceMatches.Count > 0)
+        {
+            var sentenceCount = Math.Min(2, sentenceMatches.Count);
+            var parts = new List<string>(sentenceCount);
+            for (var i = 0; i < sentenceCount; i++)
+            {
+                var s = sentenceMatches[i].Value.Trim();
+                if (!string.IsNullOrWhiteSpace(s))
+                    parts.Add(s);
+            }
+
+            sanitized = string.Join(" ", parts).Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(sanitized))
+            return "Try focusing on one small invariant that must stay true at each step.";
+
+        // Gentle length cap to reduce chance of spoiler-ish detail.
+        if (sanitized.Length > 260)
+            sanitized = sanitized[..260].TrimEnd() + "...";
+
+        return sanitized;
     }
 }
