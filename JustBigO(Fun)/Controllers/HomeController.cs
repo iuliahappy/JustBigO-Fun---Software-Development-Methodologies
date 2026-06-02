@@ -24,9 +24,18 @@ namespace JustBigO_Fun_.Controllers
             _markdown = markdown;
         }
 
-        // --- INCEPUT MODIFICARE ---
-        // Am adăugat parametrul `difficultyFilter` și am implementat logica de filtrare `.Where(...)`
-        public async Task<IActionResult> Index(string sortOrder, string difficultyFilter)
+        public IActionResult Index()
+        {
+            return View();
+        }
+
+        public async Task<IActionResult> Problems(string sortOrder, string difficultyFilter)
+        {
+            var problemItems = await BuildProblemListAsync(sortOrder, difficultyFilter);
+            return View(problemItems);
+        }
+
+        private async Task<List<ProblemListItem>> BuildProblemListAsync(string sortOrder, string difficultyFilter)
         {
             // Salvăm parametrii în ViewData pentru a menține starea în butoanele de pe UI
             ViewData["DifficultySortParm"] = sortOrder == "diff_asc" ? "diff_desc" : "diff_asc";
@@ -76,7 +85,7 @@ namespace JustBigO_Fun_.Controllers
                 _ => problemItems.OrderBy(p => problems.First(x => x.Id == p.Id).OrderIndex)
             };
 
-            return View(problemItems.ToList());
+            return problemItems.ToList();
         }
 
         private static int GetDifficultyWeight(string difficulty)
@@ -89,8 +98,6 @@ namespace JustBigO_Fun_.Controllers
                 _ => 0
             };
         }
-        // --- SFARSIT MODIFICARE ---
-
         public async Task<IActionResult> Solve(int? id)
         {
             Problem? problem;

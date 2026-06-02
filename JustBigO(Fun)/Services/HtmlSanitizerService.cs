@@ -1,3 +1,8 @@
+// To fix CS0246, you must add a reference to the Ganss.Xss NuGet package.
+// In Visual Studio, right-click your project > Manage NuGet Packages > Browse > search for "Ganss.Xss" > Install.
+// Or, run the following command in the Package Manager Console:
+// Install-Package Ganss.Xss
+
 using Ganss.Xss;
 
 namespace JustBigO_Fun_.Services;

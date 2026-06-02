@@ -25,7 +25,7 @@ namespace JustBigO_Fun_.Tests.Controllers
         }
 
         [Fact]
-        public async Task Index_ReturnsViewWithProblems()
+        public async Task Problems_ReturnsViewWithProblems()
         {
             // Arrange
             using var db = new ApplicationDbContext(_options);
@@ -44,7 +44,7 @@ namespace JustBigO_Fun_.Tests.Controllers
             };
 
             // Act
-            var result = await controller.Index(null, null);
+            var result = await controller.Problems(null, null);
 
             // Assert
             var viewResult = Assert.IsType<ViewResult>(result);
@@ -53,7 +53,7 @@ namespace JustBigO_Fun_.Tests.Controllers
         }
 
         [Fact]
-        public async Task Index_FiltersByDifficulty()
+        public async Task Problems_FiltersByDifficulty()
         {
             // Arrange
             using var db = new ApplicationDbContext(_options);
@@ -72,7 +72,7 @@ namespace JustBigO_Fun_.Tests.Controllers
             };
 
             // Act
-            var result = await controller.Index(null, "Easy");
+            var result = await controller.Problems(null, "Easy");
 
             // Assert
             var viewResult = Assert.IsType<ViewResult>(result);
