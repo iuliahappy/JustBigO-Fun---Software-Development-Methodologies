@@ -169,9 +169,9 @@ namespace JustBigO_Fun_.Controllers
 
             try
             {
-                // Gestionăm timeout-ul de 10 secunde să nu blocăm interfața.
+                // Gestionăm timeout-ul de 30 secunde să nu blocăm interfața.
                 var analyzeTask = complexityAnalyzer.AnalyzeCodeAsync(model.SourceCode);
-                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
 
                 if (await Task.WhenAny(analyzeTask, timeoutTask) == analyzeTask)
                 {
@@ -333,13 +333,13 @@ namespace JustBigO_Fun_.Controllers
             string timeO = "O(?)";
             string spaceO = "O(?)";
 
-            // 2. Dacă codul trece testele, apelăm Agentul AI cu TIMEOUT de 10 secunde
+            // 2. Dacă codul trece testele, apelăm Agentul AI cu TIMEOUT de 30 secunde
             if (isSuccess)
             {
                 try
                 {
                     var analyzeTask = complexityAnalyzer.AnalyzeCodeAsync(model.SourceCode);
-                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
 
                     if (await Task.WhenAny(analyzeTask, timeoutTask) == analyzeTask)
                     {
