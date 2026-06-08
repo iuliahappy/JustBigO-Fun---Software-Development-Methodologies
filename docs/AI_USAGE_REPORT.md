@@ -5,7 +5,7 @@
 **Date:** June 2026
 
 > Terminology note: AI appears on **two distinct planes** in this project, which we treat separately:
-> 1. **AI as part of the product** — the agents integrated into the application (Mentor / Transpiler on Llama 3.2 via Ollama + Semantic Kernel, plus the Gemini-based generators). These are functionality, not code-writing tools.
+> 1. **AI as part of the product** — the agents integrated into the application (Mentor / Transpiler on Llama 3.2 via Ollama + Semantic Kernel, plus the Gemini-based generators). These are functionalities, not code-writing tools. 
 > 2. **AI as a development tool** — the tools the team used to *build* the project (Gemini web, Cursor, Gemini CLI, Claude Code). **This report focuses mainly on plane 2**, as required.
 
 ---
