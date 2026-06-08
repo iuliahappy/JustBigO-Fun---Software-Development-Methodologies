@@ -5,10 +5,13 @@ on:
     branches: [ "**" ]
   pull_request:
     branches: [ "**" ]
+  release:
+    types: [ published ]
 
 jobs:
   build:
     name: Build & Test (CI)
+    if: github.event_name != 'release'
     runs-on: ubuntu-latest
 
     steps:
@@ -25,7 +28,7 @@ jobs:
       run: dotnet test --no-build --verbosity normal
 
   publish:
-    name: Publish (CD)
+    name: Publish artifact (CD)
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -43,3 +46,25 @@ jobs:
       with:
         name: justbigofun-app
         path: ./publish
+
+  release:
+    name: Attach binaries to GitHub Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+    - name: Publish (Windows, self-contained .exe)
+      run: dotnet publish "JustBigO(Fun)/JustBigO(Fun).csproj" -c Release -r win-x64 --self-contained true -o ./publish-win
+    - name: Zip the Windows build
+      run: cd publish-win && zip -r ../JustBigO-Fun-win-x64.zip .
+    - name: Upload binaries to the release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: JustBigO-Fun-win-x64.zip
