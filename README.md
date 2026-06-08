@@ -2,6 +2,8 @@
 
 JustBigO-Fun is an ASP.NET Core 9.0 MVC platform for algorithmic challenges, inspired by sites like LeetCode.
 
+> 🎥 **Demo (screencast):** https://youtu.be/4bKce7Ch55Y
+
 > 📄 The application's technical documentation (features, tech stack, run instructions) is in the **[Project Documentation](#project-documentation)** section at the end of this README.
 
 ---

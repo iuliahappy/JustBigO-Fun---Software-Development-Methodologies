@@ -3,6 +3,7 @@ using JustBigO_Fun_.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -13,7 +14,11 @@ public class DockerCodeExecutor : ICodeExecutor
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<DockerCodeExecutor> _logger;
     private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
-    private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     public DockerCodeExecutor(IServiceScopeFactory scopeFactory, ILogger<DockerCodeExecutor> logger)
     {

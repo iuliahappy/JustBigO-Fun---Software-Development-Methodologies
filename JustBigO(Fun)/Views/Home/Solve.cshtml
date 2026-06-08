@@ -125,9 +125,9 @@
                 .replace(/"/g, '&quot;');
         }
 
-        // Functie ajutatoare pentru timeout Frontend (10 secunde)
+        // Functie ajutatoare pentru timeout Frontend (30 secunde)
         async function fetchWithTimeout(resource, options = {}) {
-            const { timeout = 10000 } = options;
+            const { timeout = 30000 } = options;
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeout);
             const response = await fetch(resource, {
@@ -244,12 +244,12 @@
                 try {
                     // Impunem limită la apelul SignalR
                     const invokeTask = connection.invoke("TranslateCode", sourceCode, sourceLang, targetLang);
-                    const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000));
+                    const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 30000));
                     await Promise.race([invokeTask, timeoutTask]);
                 } catch (err) {
                     console.error("Translation Error: ", err);
                     if (err.message === "Timeout") {
-                        window.aiEditor.setValue("// Timeout: Agentul AI a depășit timpul de așteptare de 10s.\n// Platforma nu a fost blocată. Încearcă din nou mai târziu.");
+                        window.aiEditor.setValue("// Timeout: Agentul AI a depășit timpul de așteptare de 30s.\n// Platforma nu a fost blocată. Încearcă din nou mai târziu.");
                     } else {
                         window.aiEditor.setValue("// Error translating code.");
                     }
@@ -278,7 +278,7 @@
                             sourceCode: sourceCode,
                             language: language
                         }),
-                        timeout: 10000 // 10 secunde limită
+                        timeout: 30000 // 30 secunde limită
                     });
 
                     if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
@@ -291,7 +291,7 @@
                     hintContainer.textContent = data.hint || "No hint was returned.";
                 } catch (err) {
                     if (err.name === 'AbortError' || err.message === 'Timeout') {
-                        hintContainer.innerHTML = '<span class="text-danger">Timpul de așteptare a expirat (10s). Agentul AI este momentan suprasolicitat.</span>';
+                        hintContainer.innerHTML = '<span class="text-danger">Timpul de așteptare a expirat (30s). Agentul AI este momentan suprasolicitat.</span>';
                     } else {
                         hintContainer.textContent = "Error requesting hint: " + err.message;
                     }
@@ -320,7 +320,7 @@
                             sourceCode: sourceCode,
                             language: language
                         }),
-                        timeout: 10000
+                        timeout: 30000
                     });
 
                     if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
@@ -351,7 +351,7 @@
                     consoleOutput.innerHTML = msg;
                 } catch (err) {
                     if (err.name === 'AbortError' || err.message === 'Timeout') {
-                        consoleOutput.innerHTML = '<div class="p-2 text-danger">Timeout: Agentul AI a depășit timpul alocat (10s). Platforma nu a fost blocată.</div>';
+                        consoleOutput.innerHTML = '<div class="p-2 text-danger">Timeout: Agentul AI a depășit timpul alocat (30s). Platforma nu a fost blocată.</div>';
                     } else {
                         consoleOutput.innerHTML = '<div class="p-2 text-danger">Complete current code failed: ' + err.message + '</div>';
                     }
@@ -387,7 +387,7 @@
                             sourceCode: sourceCode,
                             language: language
                         }),
-                        timeout: 10000
+                        timeout: 30000
                     });
 
                     if ((response.redirected && response.url.includes('Login')) || response.status === 401) {
@@ -411,7 +411,7 @@
                     preCode.textContent = '';
                     preDs.textContent = '';
                     if (err.name === 'AbortError' || err.message === 'Timeout') {
-                        preSteps.textContent = 'Timeout: Agentul AI a depășit timpul de așteptare de 10 secunde.';
+                        preSteps.textContent = 'Timeout: Agentul AI a depășit timpul de așteptare de 30 secunde.';
                     } else {
                         preSteps.textContent = 'Error: ' + err.message;
                     }
@@ -515,7 +515,7 @@
                         results.forEach((r, idx) => {
                             const isOk = r.status === 'Accepted';
                             html += `
-                            <div class="mb-4 p-2 border ${isOk ? 'border-success' : 'border-danger'} rounded bg-dark">
+                            <div class="mb-4 p-2 rounded jbo-testcase ${isOk ? 'jbo-testcase--pass' : 'jbo-testcase--fail'}">
                                 <div class="d-flex justify-content-between">
                                     <strong>Test Case #${idx + 1}</strong>
                                     <span class="badge ${isOk ? 'bg-success' : 'bg-danger'}">${r.status}</span>
@@ -574,7 +574,7 @@
                                 sourceCode: sourceCode,
                                 language: document.getElementById('languageSelect').value
                             }),
-                            timeout: 10000
+                            timeout: 30000
                         });
 
                         if (aiResponse.ok) {
