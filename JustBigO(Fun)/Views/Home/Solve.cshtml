@@ -499,7 +499,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <h4 class="${data.status === 'Accepted' ? 'text-success' : 'text-danger'} mb-0">Submission: ${data.status}</h4>
                     <div class="small text-muted">
-                        ${data.userTimeMs ? `<span>⏱ ${data.userTimeMs.toFixed(0)}ms</span>` : ''}
+                        ${((data.status === 'Accepted' || data.status === 'WrongAnswer') && data.userTimeMs != null) ? `<span>⏱ ${data.userTimeMs < 1 ? '<1' : data.userTimeMs.toFixed(0)}ms</span>` : ''}
                         ${data.peakMemoryKb ? `<span class="ms-2">💾 ${data.peakMemoryKb.toFixed(0)}KB</span>` : ''}
                     </div>
                 </div>

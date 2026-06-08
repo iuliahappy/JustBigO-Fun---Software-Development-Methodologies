@@ -73,7 +73,18 @@ else
                                     </span>
                                 </td>
                                 <td><span class="badge bg-light text-dark border">@sub.Language</span></td>
-                                <td>@(sub.ExecutionTimeMs?.ToString("F2") ?? "-") ms</td>
+                                <td>
+                                    @{
+                                        var ran = sub.Status == JustBigO_Fun_.Models.SubmissionStatus.Accepted
+                                               || sub.Status == JustBigO_Fun_.Models.SubmissionStatus.WrongAnswer;
+                                        string timeDisplay;
+                                        if (ran && sub.UserTimeMs.HasValue)
+                                            timeDisplay = sub.UserTimeMs.Value < 1 ? "<1 ms" : sub.UserTimeMs.Value.ToString("F0") + " ms";
+                                        else
+                                            timeDisplay = "-";
+                                    }
+                                    @timeDisplay
+                                </td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-secondary" onclick="viewCode(@sub.Id)">View Code</button>
                                 </td>
