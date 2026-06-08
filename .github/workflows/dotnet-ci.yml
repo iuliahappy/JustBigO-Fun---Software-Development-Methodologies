@@ -1,4 +1,4 @@
-name: .NET CI
+name: .NET CI/CD
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-
+    name: Build & Test (CI)
     runs-on: ubuntu-latest
 
     steps:
@@ -23,3 +23,23 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test --no-build --verbosity normal
+
+  publish:
+    name: Publish (CD)
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+    - name: Publish application
+      run: dotnet publish "JustBigO(Fun)/JustBigO(Fun).csproj" -c Release -o ./publish
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: justbigofun-app
+        path: ./publish

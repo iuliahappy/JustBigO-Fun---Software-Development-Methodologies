@@ -1,8 +1,64 @@
 # JustBigO-Fun
 
-JustBigO-Fun is an ASP.NET Core 9.0 MVC platform for algorithmic challenges, inspired by sites like LeetCode. It provides a full-stack environment for users to browse coding problems, submit solutions, and have them validated against test cases. 
+JustBigO-Fun is an ASP.NET Core 9.0 MVC platform for algorithmic challenges, inspired by sites like LeetCode.
 
-## Key Features
+> 📄 The application's technical documentation (features, tech stack, run instructions) is in the **[Project Documentation](#project-documentation)** section at the end of this README.
+
+---
+
+## MDS Evaluation — AI-Driven Software Development Process (Component B)
+
+This section maps each evaluation-rubric item to the corresponding artifacts and evidence in the repository. **Every item below involved the use of AI tools** (Gemini web, Cursor, Gemini CLI, Claude Code) — details in the [dedicated report](./docs/AI_USAGE_REPORT.md).
+
+### 1. User stories (min. 10) & backlog creation — 2 pts
+The user stories and backlog were created and managed in **Jira**, formulated and refined with AI (Gemini web) in the standard format ("As a user, I want… so that…"), together with their acceptance criteria.
+
+**Jira board (screenshots):**
+
+![Jira board — backlog](./docs/jira1.png)
+
+![Jira board — sprint/board view](./docs/jira2.png)
+
+### 2. Diagrams (UML, component architecture, workflows) — 1 pt
+The architecture, component, and workflow diagrams (e.g., the Reflexion loop, the sandbox execution flow) were generated and clarified with AI assistance.
+
+- 📐 **Diagrams:** [`docs/DIAGRAMS.md`](./docs/DIAGRAMS.md)
+
+### 3. Source control with git (branching, merge/rebase, pull requests, min. 5 commits/student) — 1 pt
+Development was done on feature branches (`feature/generic-executor-metrics`, `fix/admin-area-overhaul`, `Transpilare`, `Indicii_US12_US13`, etc.), with merges, conflict resolution, and pull requests (#4–#19). AI was used to draft commit/PR messages and to resolve merge conflicts.
+
+- 🔗 **Pull requests:** [PRs link](ADD_LINK_HERE)
+- 🔗 **Commit history:** [commits link](ADD_LINK_HERE)
+
+### 4. Automated tests (including agent evals) — 2 pts
+The test suite in [`JustBigO(Fun).Tests/`](./JustBigO(Fun).Tests/) covers Controllers, Models, Hubs, and Services. It includes **agent evals** (`AI/CodeTranslatorAgentTests.cs`, `GeminiHintGeneratorTests.cs`, `GeminiRefactoringSuggestionGeneratorTests.cs`) that verify the structural integrity of AI-generated responses.
+
+- 🧪 **Tests:** [`JustBigO(Fun).Tests/`](./JustBigO(Fun).Tests/)
+
+### 5. Bug reporting and resolution via pull request — 1 pt
+Real bugs identified and fixed via PR with AI assistance (diagnosis + fix), e.g.: "No redirect to login page" and "Grey text on dark background" (PR #17), fixing tests after resource-limit changes, and stopping the AI query after a timeout.
+
+- 🐛 **Bug + fix (PR):** [bug/PR link](ADD_LINK_HERE)
+
+### 6. CI/CD pipeline — 1 pt
+The pipeline is configured in GitHub Actions and was generated with AI based on the project structure:
+- **CI** (`build` job, runs on every push/PR): restore → build → run tests on .NET 9.
+- **CD** (`publish` job, runs only on push to `main`, after CI passes): `dotnet publish` in Release mode and uploads the deployable build as a downloadable artifact.
+
+- ⚙️ **Workflow:** [`.github/workflows/dotnet-ci.yml`](./.github/workflows/dotnet-ci.yml)
+
+### 7. Report on the use of AI tools — 2 pts
+A detailed report on the AI tools used by each team member and across each development phase.
+
+- 📄 **Report:** [`docs/AI_USAGE_REPORT.md`](./docs/AI_USAGE_REPORT.md)
+
+---
+
+## Project Documentation
+
+It provides a full-stack environment for users to browse coding problems, submit solutions, and have them validated against test cases.
+
+### Key Features
 
 - **Problem Library**: Browse a collection of algorithmic challenges with difficulty levels, tags, and detailed descriptions.
 - **Solution Submission**: Submit C#, Python, Java, and C++ code for evaluation.
@@ -11,7 +67,7 @@ JustBigO-Fun is an ASP.NET Core 9.0 MVC platform for algorithmic challenges, ins
 - **Admin Dashboard**: Secure area for managing problems, including CRUD operations and batch uploading test cases (`.in`/`.out` files).
 - **Identity & RBAC**: Complete authentication system with role-based access control for users and administrators.
 
-## Tech Stack
+### Tech Stack
 
 - **Backend**: .NET 9.0, ASP.NET Core MVC, C#, SignalR
 - **Database**: SQL Server with Entity Framework Core
@@ -20,9 +76,9 @@ JustBigO-Fun is an ASP.NET Core 9.0 MVC platform for algorithmic challenges, ins
 - **Local AI Engine**: Semantic Kernel & Ollama (Llama 3.2)
 - **Frontend**: Razor Views, Bootstrap, Vanilla CSS, Monaco Editor
 
-## Getting Started
+### Getting Started
 
-### Prerequisites
+#### Prerequisites
 
 To run this project locally, you must have the following installed and running:
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
@@ -30,7 +86,7 @@ To run this project locally, you must have the following installed and running:
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) (**Must be running** in the background)
 - [Ollama](https://ollama.com/) (**Must be installed** for the local AI agent)
 
-### Setup Instructions
+#### Setup Instructions
 
 1. **Clone the repository**:
    ```bash
@@ -67,7 +123,7 @@ To run this project locally, you must have the following installed and running:
 - **Admin Email**: `admin@justbigofun.local`
 - **Admin Password**: `Admin123!`
 
-## Project Structure
+### Project Structure
 
 - `JustBigO(Fun)/Controllers/`: MVC controllers including a dedicated `Admin` area for problem management.
 - `JustBigO(Fun)/Hubs/`: SignalR hubs for real-time AI code streaming.
@@ -76,7 +132,7 @@ To run this project locally, you must have the following installed and running:
 - `JustBigO(Fun)/Data/`: EF Core context and seeders (`ProblemSeeder`, `AdminSeeder`).
 - `JustBigO(Fun)/Views/`: Razor views for the public interface and administrative tools.
 
-## Development Conventions
+### Development Conventions
 
 - **Surgical Updates**: Follow existing patterns for adding new features or fixing bugs.
 - **Validation**: Use Data Annotations for model validation.
