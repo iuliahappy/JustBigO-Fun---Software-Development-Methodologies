@@ -29,8 +29,8 @@ The architecture, component, and workflow diagrams (e.g., the Reflexion loop, th
 ### 3. Source control with git (branching, merge/rebase, pull requests, min. 5 commits/student) — 1 pt
 Development was done on feature branches (`feature/generic-executor-metrics`, `fix/admin-area-overhaul`, `Transpilare`, `Indicii_US12_US13`, etc.), with merges, conflict resolution, and pull requests (#4–#19). AI was used to draft commit/PR messages and to resolve merge conflicts.
 
-- 🔗 **Pull requests:** [PRs link](ADD_LINK_HERE)
-- 🔗 **Commit history:** [commits link](ADD_LINK_HERE)
+- 🔗 **Pull requests:** [PRs link](https://github.com/iuliahappy/JustBigO-Fun---Software-Development-Methodologies/pulls)
+- 🔗 **Commit history:** [commits link](https://github.com/iuliahappy/JustBigO-Fun---Software-Development-Methodologies/commits/main/)
 
 ### 4. Automated tests (including agent evals) — 2 pts
 The test suite in [`JustBigO(Fun).Tests/`](./JustBigO(Fun).Tests/) covers Controllers, Models, Hubs, and Services. It includes **agent evals** (`AI/CodeTranslatorAgentTests.cs`, `GeminiHintGeneratorTests.cs`, `GeminiRefactoringSuggestionGeneratorTests.cs`) that verify the structural integrity of AI-generated responses.
@@ -40,7 +40,7 @@ The test suite in [`JustBigO(Fun).Tests/`](./JustBigO(Fun).Tests/) covers Contro
 ### 5. Bug reporting and resolution via pull request — 1 pt
 Real bugs identified and fixed via PR with AI assistance (diagnosis + fix), e.g.: "No redirect to login page" and "Grey text on dark background" (PR #17), fixing tests after resource-limit changes, and stopping the AI query after a timeout.
 
-- 🐛 **Bug + fix (PR):** [bug/PR link](ADD_LINK_HERE)
+- 🐛 **Bug + fix (PR):** [bug/PR link](https://github.com/iuliahappy/JustBigO-Fun---Software-Development-Methodologies/issues?q=is%3Aissue%20state%3Aclosed)
 
 ### 6. CI/CD pipeline — 1 pt
 The pipeline is configured in GitHub Actions and was generated with AI based on the project structure:
