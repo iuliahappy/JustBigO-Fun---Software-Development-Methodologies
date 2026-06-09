@@ -15,9 +15,11 @@
 | Member | AI development tools | Primary way of working |
 |--------|----------------------|------------------------|
 | Bâcă Ionuț-Adelin | **Gemini (web)** | Conversational in the browser: snippet generation, explanations, copy-paste debugging. |
-| Ștefan Rotaru | **Gemini (web)** | Conversational in the browser: writing problem descriptions, explanations, and code fragments. |
-| Popescu Iulia-Maria | **Gemini (web) + Cursor** | Gemini for exploration/questions, Cursor as an AI-integrated IDE (context-aware autocomplete, inline editing, chat over files). |
 | Dumitrescu Mădălina-Camelia | **Gemini CLI**, and in the final stages **Claude Code** | Agentic in the terminal, with direct access to the repo files; transition to Claude Code for the complex end-of-project tasks. |
+| Popescu Iulia-Maria | **Gemini (web) + Cursor** | Gemini for exploration/questions, Cursor as an AI-integrated IDE (context-aware autocomplete, inline editing, chat over files). |
+| Rotaru Ștefan | **Gemini (web)** | Conversational in the browser: writing problem descriptions, explanations, and code fragments. |
+
+
 
 **Note on the evolution:** the team started with **conversational** tools (Gemini web — copy-paste answers, no code access) and gradually migrated to **agentic** tools integrated into the workflow (Cursor in the IDE; Gemini CLI and Claude Code in the terminal, with direct file access, command execution, and multi-file editing). This transition reduced the "copy-paste" overhead and improved accuracy, because the agentic tools could see the project's real context.
 
@@ -50,7 +52,7 @@
 ## 3. Use of AI Across Each Phase of the Process (mapped to the B rubric)
 
 ### 3.1 User stories & backlog (2 pts)
-- User stories were **brainstormed and refined with Gemini (web)** by Dumitrescu Mădălina-Camelia.
+- User stories were **brainstormed and refined with Gemini (web)**
 - AI was used to rephrase them into the standard format ("As a user, I want… so that…") and to identify acceptance criteria.
 
 ### 3.2 Diagrams (1 pt)
